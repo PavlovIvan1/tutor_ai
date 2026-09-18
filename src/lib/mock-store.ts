@@ -51,8 +51,8 @@ function getDB(): MockDB {
     return db;
   }
   const db: MockDB = {
-    user: { id: 'mock-user-1', email: 'demo@tutorai.com', name: 'Demo Tutor' },
-    subscription: { ...defaultSubscription, plan: 'pro', ai_minutes_used: 1240, ai_minutes_total: 1500, expires_at: new Date(Date.now() + 30 * 86400000).toISOString() },
+    user: null,
+    subscription: { ...defaultSubscription },
     students: [],
     lessons: [],
     homeworks: [],
@@ -80,11 +80,14 @@ export const mockStore = {
     },
     signIn: async (email: string, _password: string) => {
       const db = getDB();
-      db.user = { ...db.user!, email };
+      db.user = { id: 'mock-user-1', email, name: db.user?.name || 'Tutor' };
       saveDB(db);
       return { data: { user: db.user, session: { access_token: 'mock' } }, error: null };
     },
     signOut: async () => {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(STORAGE_KEY);
+      }
       return { error: null };
     },
   },
