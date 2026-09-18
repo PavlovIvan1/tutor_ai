@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { mockStore } from '@/lib/mock-store';
+import { getAvatarUrl } from '@/lib/utils';
 
 export default function LandingPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -118,12 +119,12 @@ export default function LandingPage() {
           {/* Trust row */}
           <div className="flex items-center justify-center gap-3">
             <div className="flex -space-x-2">
-              {[32, 5, 12, 9].map((id) => (
+              {['Анна М.', 'Дмитрий К.', 'Елена В.', 'Сергей П.'].map((name) => (
                 <img
-                  key={id}
-                  src={`https://i.pravatar.cc/64?img=${id}`}
+                  key={name}
+                  src={getAvatarUrl(name)}
                   alt=""
-                  className="w-8 h-8 rounded-full border-2 border-white object-cover"
+                  className="w-8 h-8 rounded-full border-2 border-white object-cover bg-surface-tinted"
                 />
               ))}
             </div>
@@ -226,7 +227,7 @@ export default function LandingPage() {
                 <div className="bg-white rounded-xl border border-surface-border p-3">
                   <p className="text-[10px] font-bold text-ink mb-2">Students Needing Attention</p>
                   <div className="flex items-center gap-2">
-                    <img src="https://i.pravatar.cc/64?img=53" alt="" className="w-5 h-5 rounded-full" />
+                    <img src={getAvatarUrl('Тимур Ш.')} alt="" className="w-5 h-5 rounded-full bg-surface-tinted" />
                     <div className="flex-1">
                       <p className="text-[9px] font-bold text-ink">Тимур Ш.</p>
                       <p className="text-[8px] text-ink-muted">Progress below 50%</p>

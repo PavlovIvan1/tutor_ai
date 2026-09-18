@@ -67,3 +67,34 @@ export async function POST(req: NextRequest) {
     confirmation_url: payment.confirmation?.confirmation_url,
   });
 }
+
+export async function GET(req: NextRequest) {
+  const paymentId = req.nextUrl.searchParams.get('payment_id');
+
+  if (!paymentId) {
+    return NextResponse.json({ error: 'payment_id required' }, { status: 400 });
+  }
+
+  if (!YOOKASSA_SHOP_ID || YOOKASSA_SHOP_ID === 'YOUR_SHOP_ID') {
+    return NextResponse.json({ status: 'succeeded', mock: true });
+  }
+
+  const auth = Buffer.from(`${YOOKASSA_SHOP_ID}:${YOOKASSA_SECRET_KEY}`).toString('base64');
+
+  const response = await fetch(`https://api.yookassa.ru/v3/payments/${paymentId}`, {
+    headers: {
+      'Authorization': `Basic ${auth}`,
+    },
+  });
+
+  if (!response.ok) {
+    return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
+  }
+
+  const payment = await response.json();
+  return NextResponse.json({
+    status: payment.status,
+    paid: payment.paid,
+    metadata: payment.metadata,
+  });
+}

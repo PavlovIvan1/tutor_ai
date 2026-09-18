@@ -12,23 +12,53 @@ function SubscribeContent() {
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [loading, setLoading] = useState(false);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     const { data } = mockStore.subscription.get();
     setSubscription(data);
   }, []);
 
-  // Handle return from YooKassa (mock or real)
+  // Handle return from YooKassa
   useEffect(() => {
     const paymentId = searchParams.get('payment_id');
+
+    // Direct return with params (mock mode)
     const status = searchParams.get('status');
     const planId = searchParams.get('plan') as 'starter' | 'pro' | 'power' | null;
-
     if (paymentId && status === 'succeeded' && planId) {
       mockStore.subscription.activate(planId, paymentId);
       const { data } = mockStore.subscription.get();
       setSubscription(data);
       router.replace('/subscribe');
+      return;
+    }
+
+    // Real YooKassa return — verify payment
+    const stored = localStorage.getItem('tutorai_pending_payment');
+    if (stored) {
+      const pending = JSON.parse(stored);
+      setVerifying(true);
+
+      fetch(`/api/subscribe?payment_id=${pending.payment_id}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.status === 'succeeded' || data.paid) {
+            mockStore.subscription.activate(pending.plan, pending.payment_id);
+            localStorage.removeItem('tutorai_pending_payment');
+            const { data: sub } = mockStore.subscription.get();
+            setSubscription(sub);
+          } else {
+            // Payment not yet confirmed, keep checking
+            localStorage.removeItem('tutorai_pending_payment');
+          }
+          setVerifying(false);
+          router.replace('/subscribe');
+        })
+        .catch(() => {
+          setVerifying(false);
+          router.replace('/subscribe');
+        });
     }
   }, [searchParams, router]);
 
@@ -48,6 +78,14 @@ function SubscribeContent() {
 
       const data = await res.json();
 
+      if (data.payment_id) {
+        // Store pending payment before redirect
+        localStorage.setItem('tutorai_pending_payment', JSON.stringify({
+          payment_id: data.payment_id,
+          plan: plan.id,
+        }));
+      }
+
       if (data.confirmation_url) {
         window.location.href = data.confirmation_url;
       }
@@ -61,6 +99,17 @@ function SubscribeContent() {
     const { data } = mockStore.subscription.get();
     setSubscription(data);
   };
+
+  if (verifying) {
+    return (
+      <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-3 border-brand border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-ink-secondary">Проверяем статус оплаты...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (subscription?.plan) {
     const currentPlan = plans.find((p) => p.id === subscription.plan);

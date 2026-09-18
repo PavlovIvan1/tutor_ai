@@ -53,12 +53,7 @@ function getDB(): MockDB {
   const db: MockDB = {
     user: { id: 'mock-user-1', email: 'demo@tutorai.com', name: 'Demo Tutor' },
     subscription: { ...defaultSubscription, plan: 'pro', ai_minutes_used: 1240, ai_minutes_total: 1500, expires_at: new Date(Date.now() + 30 * 86400000).toISOString() },
-    students: [
-      { id: 's1', tutor_id: 'mock-user-1', name: 'Мария К.', email: 'maria@example.com', level: 'B2', goals: 'Подготовка к IELTS', notes: 'Мотивированная ученица', lesson_day: 'Понедельник', lesson_time: '18:00', lesson_duration: 60, price_per_lesson: 2000, is_archived: false, created_at: new Date(Date.now() - 30 * 86400000).toISOString() },
-      { id: 's2', tutor_id: 'mock-user-1', name: 'Даниил П.', email: 'daniil@example.com', level: 'B1', goals: 'Деловой английский', notes: 'Трудности с грамматикой', lesson_day: 'Среда', lesson_time: '17:00', lesson_duration: 60, price_per_lesson: 1500, is_archived: false, created_at: new Date(Date.now() - 20 * 86400000).toISOString() },
-      { id: 's3', tutor_id: 'mock-user-1', name: 'Эмма С.', email: null, level: 'A2', goals: 'Повседневное общение', notes: null, lesson_day: 'Четверг', lesson_time: '19:00', lesson_duration: 45, price_per_lesson: 1500, is_archived: false, created_at: new Date(Date.now() - 14 * 86400000).toISOString() },
-      { id: 's4', tutor_id: 'mock-user-1', name: 'Тимур Ш.', email: null, level: 'A1', goals: 'Базовая грамматика', notes: 'Новичок, начинает с нуля', lesson_day: 'Суббота', lesson_time: '11:00', lesson_duration: 60, price_per_lesson: 2000, is_archived: false, created_at: new Date(Date.now() - 7 * 86400000).toISOString(), avatar_img: 53 },
-    ],
+    students: [],
     lessons: [],
     homeworks: [],
   };

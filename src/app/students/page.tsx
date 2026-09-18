@@ -6,6 +6,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import Card from '@/components/ui/Card';
 import EmptyState from '@/components/ui/EmptyState';
 import { createClient } from '@/lib/supabase/client';
+import { getAvatarUrl } from '@/lib/utils';
 import type { Student } from '@/lib/types';
 
 export default function StudentsPage() {
@@ -70,9 +71,9 @@ export default function StudentsPage() {
               <Card className="p-5 hover:shadow-card transition-all cursor-pointer">
                 <div className="flex items-center gap-4">
                   <img
-                    src={`https://i.pravatar.cc/80?u=${s.id}`}
+                    src={getAvatarUrl(s.name)}
                     alt={s.name}
-                    className="w-12 h-12 rounded-full object-cover"
+                    className="w-12 h-12 rounded-full object-cover bg-surface-tinted"
                   />
                   <div className="flex-1">
                     <h3 className="font-bold text-ink">{s.name}</h3>

@@ -2,6 +2,7 @@
 
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Card from '@/components/ui/Card';
+import { getAvatarUrl } from '@/lib/utils';
 
 const weeklyData = [
   { day: 'Mon', lessons: 3, minutes: 180 },
@@ -14,10 +15,10 @@ const weeklyData = [
 ];
 
 const studentProgress = [
-  { name: 'Мария К.', level: 'B2', progress: 87, trend: '+5%', avatar: 5 },
-  { name: 'Даниил П.', level: 'B1', progress: 64, trend: '+12%', avatar: 12 },
-  { name: 'Эмма С.', level: 'A2', progress: 72, trend: '+8%', avatar: 9 },
-  { name: 'Тимур Ш.', level: 'A1', progress: 45, trend: '+3%', avatar: 53 },
+  { name: 'Мария К.', level: 'B2', progress: 87, trend: '+5%' },
+  { name: 'Даниил П.', level: 'B1', progress: 64, trend: '+12%' },
+  { name: 'Эмма С.', level: 'A2', progress: 72, trend: '+8%' },
+  { name: 'Тимур Ш.', level: 'A1', progress: 45, trend: '+3%' },
 ];
 
 const maxLessons = Math.max(...weeklyData.map((d) => d.lessons));
@@ -79,7 +80,7 @@ export default function AnalyticsPage() {
           <div className="space-y-4">
             {studentProgress.map((s) => (
               <div key={s.name} className="flex items-center gap-4">
-                <img src={`https://i.pravatar.cc/64?img=${s.avatar}`} alt="" className="w-10 h-10 rounded-full" />
+                <img src={getAvatarUrl(s.name)} alt="" className="w-10 h-10 rounded-full bg-surface-tinted" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-sm font-bold text-ink">{s.name}</p>

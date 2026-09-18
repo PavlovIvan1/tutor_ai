@@ -9,10 +9,8 @@ function isSupabaseConfigured() {
 }
 
 function makeMockClient() {
-  const wrap = <T>(val: T) => Promise.resolve(val);
-
   const buildChain = (table: string, data: any[]): any => {
-    const api = {
+    const chain: any = {
       data,
       error: null,
       select: (_cols?: string) => buildChain(table, data),
@@ -25,17 +23,14 @@ function makeMockClient() {
         return buildChain(table, sorted);
       },
       limit: (n: number) => buildChain(table, data.slice(0, n)),
-      single: () => wrap({ data: data[0] || null, error: null }),
-      maybeSingle: () => wrap({ data: data[0] || null, error: null }),
+      single: () => Promise.resolve({ data: data[0] || null, error: null }),
+      maybeSingle: () => Promise.resolve({ data: data[0] || null, error: null }),
+      then: (resolve: any, reject?: any) => {
+        try { resolve({ data, error: null }); }
+        catch (e) { if (reject) reject(e); }
+      },
     };
-
-    // Make it thenable so `await query` returns { data, error }
-    api.then = (resolve: Function, reject?: Function) => {
-      try { resolve({ data, error: null }); }
-      catch (e) { if (reject) reject(e); }
-    };
-
-    return api;
+    return chain;
   };
 
   return {
@@ -71,20 +66,18 @@ function makeMockClient() {
             select: () => ({
               single: async () => {
                 if (store?.insert) {
-                  const result = store.insert(row);
-                  return result;
+                  return store.insert(row);
                 }
                 return { data: null, error: { message: `Table "${table}" not in mock store` } };
               },
             }),
-          };
-          api.then = (resolve: Function) => {
-            if (store?.insert) {
-              const result = store.insert(row);
-              resolve(result);
-            } else {
-              resolve({ data: null, error: { message: `Table "${table}" not in mock store` } });
-            }
+            then: (resolve: any) => {
+              if (store?.insert) {
+                resolve(store.insert(row));
+              } else {
+                resolve({ data: null, error: { message: `Table "${table}" not in mock store` } });
+              }
+            },
           };
           return api;
         },
@@ -113,7 +106,7 @@ function makeMockClient() {
         }),
       };
     },
-  } as any;
+  };
 }
 
 export function createClient() {

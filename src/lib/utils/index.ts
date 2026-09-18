@@ -44,3 +44,37 @@ export function getLevelColor(level: string) {
 export function cn(...classes: (string | boolean | undefined | null)[]) {
   return classes.filter(Boolean).join(' ');
 }
+
+/**
+ * Generate a deterministic fun avatar URL from a name.
+ * Uses DiceBear adventurer-neutral style — looks like Xbox/Google auto-avatars.
+ * No DB storage needed — avatar is always derived from the name.
+ */
+export function getAvatarUrl(name: string, size = 128): string {
+  // Hash the name to get a deterministic seed
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
+  }
+  const seed = Math.abs(hash);
+  return `https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=${seed}&size=${size}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
+}
+
+/**
+ * Generate a deterministic background color from a name.
+ */
+export function getAvatarBg(name: string): string {
+  const colors = [
+    'bg-brand-light text-brand-dark',
+    'bg-honey/15 text-amber-700',
+    'bg-sky/15 text-sky',
+    'bg-coral/15 text-coral',
+    'bg-lavender/15 text-lavender',
+    'bg-emerald-50 text-emerald-700',
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
