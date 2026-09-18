@@ -109,8 +109,8 @@ export default function SettingsPage() {
             <p className="text-sm text-ink-secondary mb-4">Завершить сессию на этом устройстве.</p>
             <button
               onClick={() => {
-                mockStore.auth.signOut();
-                window.location.href = '/';
+                localStorage.removeItem('tutorai_mock');
+                window.location.replace('/');
               }}
               className="px-5 py-3 bg-coral text-white font-bold rounded-2xl text-sm hover:bg-red-500 transition-all"
             >
