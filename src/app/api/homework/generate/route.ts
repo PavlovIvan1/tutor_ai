@@ -29,28 +29,61 @@ export async function POST(req: NextRequest) {
 
     const prevQuestions = prevHomeworkRows.map((h: any) => h.questions?.filter(Boolean).join('; ')).filter(Boolean).join('\n');
 
-    const prompt = `Create homework for ${lesson.student_name || 'Student'} (level: ${lesson.student_level || 'unknown'}).
+    const prompt = `You are creating homework for an English tutoring student after their lesson.
 
-Lesson transcript:
-${transcript}
+## Student
+- Name: ${lesson.student_name || 'Student'}
+- Level: ${lesson.student_level || 'unknown'}
+- Student goals: review their profile and tailor exercises accordingly
 
-Analysis: ${rawAi.summary || analysis.summary || ''}
-Topics: ${JSON.stringify(rawAi.topics || analysis.topics || [])}
-Weaknesses: ${JSON.stringify(rawAi.weaknesses || analysis.weaknesses || [])}
+## Lesson Summary
+${rawAi.summary || analysis.summary || 'No summary available'}
 
-${prevQuestions ? `Previous homework (don't repeat): ${prevQuestions}` : ''}
+## Topics Covered
+${JSON.stringify(rawAi.topics || analysis.topics || [])}
 
-Generate 5-8 questions: multiple_choice, fill_blank, short_answer.
-JSON only:
-{"title":"...","questions":[{"type":"multiple_choice","question":"...","options":["A","B","C","D"],"correct_answer":"B","explanation":"..."},{"type":"fill_blank","question":"...","correct_answer":"...","explanation":"..."},{"type":"short_answer","question":"...","correct_answer":"Open-ended","explanation":"..."}]}`;
+## Student Weaknesses
+${JSON.stringify(rawAi.weaknesses || analysis.weaknesses || [])}
 
-    const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+## Key Vocabulary from Lesson
+${JSON.stringify(rawAi.key_vocabulary || [])}
+
+## Grammar Points Practiced
+${JSON.stringify(rawAi.grammar_focus || [])}
+
+## Full Transcript (for context)
+${transcript.substring(0, 3000)}
+
+${prevQuestions ? `\n## Previous Homework (DO NOT repeat these questions):\n${prevQuestions}` : ''}
+
+## Instructions
+Create 5-8 homework questions that:
+1. Focus on the student's WEAKNESSES — drill what they struggled with
+2. Include key vocabulary from the lesson
+3. Practice the grammar points covered
+4. Match the student's level (don't make it too easy or too hard)
+5. Mix question types: multiple_choice, fill_blank, short_answer
+6. Each question must have a clear correct_answer and helpful explanation
+7. If student's goal is exam prep, include exam-style questions
+8. If student's goal is conversation, include more short_answer questions
+
+## Output (JSON only):
+{
+  "title": "Homework: [specific topic] — Week of [date]",
+  "questions": [
+    {"type": "multiple_choice", "question": "...", "options": ["A","B","C","D"], "correct_answer": "B", "explanation": "..."},
+    {"type": "fill_blank", "question": "...", "correct_answer": "...", "explanation": "..."},
+    {"type": "short_answer", "question": "...", "correct_answer": "Open-ended", "explanation": "..."}
+  ]
+}`;
+
+    const aiRes = await fetch('https://polza.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'openai/gpt-4o',
         messages: [
-          { role: 'system', content: 'Expert English tutor. JSON only.' },
+          { role: 'system', content: 'You are an experienced English language teacher creating personalized homework. You understand CEFR levels, communicative teaching, and exam preparation. Always respond with valid JSON only.' },
           { role: 'user', content: prompt },
         ],
         temperature: 0.4,

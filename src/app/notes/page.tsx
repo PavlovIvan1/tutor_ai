@@ -1,20 +1,35 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Card from '@/components/ui/Card';
-import { useState } from 'react';
-
-const mockNotes = [
-  { id: 1, title: 'Мария — проблемы с Conditionals', content: 'Путает 2nd и 3rd conditional. Нужно больше практики с If + Past Perfect. На следующем уроке уделить 20 минут на это.', student: 'Мария К.', date: '2026-09-14', color: 'brand' },
-  { id: 2, title: 'Даниил — Business English фразы', content: 'Выучили 15 фраз для переговоров: "I see your point", "Let me clarify", "That works for me". Хорошо запоминает, можно увеличить нагрузку.', student: 'Даниил П.', date: '2026-09-13', color: 'honey' },
-  { id: 3, title: 'Общее — новые учебники', content: 'Заказать Cambridge English Result B2 для Марии и Speakout Intermediate для Даниила. Проверить наличие на Лабиринте.', student: 'General', date: '2026-09-12', color: 'ink' },
-  { id: 4, title: 'Эмма — IELTS Speaking Part 2', content: 'Тема "Describe a place you visited" — Эмма говорила 1:20 вместо 2 минут. Нужно добавить linking phrases и расширять ответы.', student: 'Эмма С.', date: '2026-09-10', color: 'brand' },
-];
+import Paywall from '@/components/ui/Paywall';
+import { mockStore } from '@/lib/mock-store';
 
 export default function NotesPage() {
-  const [notes, setNotes] = useState(mockNotes);
+  const [notes, setNotes] = useState<any[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [hasSubscription, setHasSubscription] = useState(false);
   const selected = notes.find((n) => n.id === selectedId);
+
+  useEffect(() => {
+    const { data } = mockStore.subscription.get();
+    setHasSubscription(data?.plan != null);
+  }, []);
+
+  if (!hasSubscription) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-black text-ink">Notes</h1>
+            <p className="text-ink-secondary mt-1">Quick notes about your students and lessons.</p>
+          </div>
+        </div>
+        <Paywall />
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -42,7 +57,6 @@ export default function NotesPage() {
             >
               <div className="flex items-center justify-between mb-1">
                 <p className="text-sm font-black text-ink truncate">{note.title}</p>
-                <div className={`w-2 h-2 rounded-full flex-shrink-0 ml-2 ${note.color === 'brand' ? 'bg-brand' : note.color === 'honey' ? 'bg-honey' : 'bg-ink'}`} />
               </div>
               <p className="text-xs text-ink-muted truncate">{note.student} · {note.date}</p>
             </button>
@@ -70,8 +84,8 @@ export default function NotesPage() {
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                 </svg>
               </div>
-              <p className="text-sm font-bold text-ink">Select a note</p>
-              <p className="text-xs text-ink-muted mt-1">Choose a note from the list to view details</p>
+              <p className="text-sm font-bold text-ink">Пока нет заметок</p>
+              <p className="text-xs text-ink-muted mt-1">Нажмите "+ New Note" чтобы создать первую</p>
             </Card>
           )}
         </div>

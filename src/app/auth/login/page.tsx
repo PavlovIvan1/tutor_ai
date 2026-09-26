@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
+import { mockStore } from '@/lib/mock-store';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import { FaYandexInternational } from 'react-icons/fa';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -13,26 +14,21 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error: authError } = await mockStore.auth.signIn(email, password);
 
-    if (error) {
-      setError(error.message);
+    if (authError) {
+      setError(authError);
       setLoading(false);
       return;
     }
 
     router.push('/dashboard');
-    router.refresh();
   };
 
   return (
@@ -45,8 +41,8 @@ export default function LoginPage() {
             </div>
             <span className="font-black text-2xl text-ink">TutorAI</span>
           </Link>
-          <h1 className="text-2xl font-black text-ink">Welcome back</h1>
-          <p className="text-ink-secondary mt-2">Sign in to your tutor dashboard</p>
+          <h1 className="text-2xl font-black text-ink">Добро пожаловать</h1>
+          <p className="text-ink-secondary mt-2">Войдите в свой кабинет</p>
         </div>
 
         <div className="bg-white rounded-3xl border border-surface-border shadow-card p-8">
@@ -60,7 +56,7 @@ export default function LoginPage() {
               required
             />
             <Input
-              label="Password"
+              label="Пароль"
               type="password"
               placeholder="••••••••"
               value={password}
@@ -75,15 +71,25 @@ export default function LoginPage() {
             )}
 
             <Button type="submit" loading={loading} className="w-full">
-              Sign in
+              Войти
             </Button>
           </form>
 
+          <div className="mt-5">
+            <button
+              onClick={() => { window.location.href = '/api/auth/yandex/callback'; }}
+              className="w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-[#FC3F1D] text-white font-bold rounded-2xl shadow-[0_4px_0_0_#C13515] hover:brightness-110 active:shadow-none active:translate-y-[2px] transition-all text-sm"
+            >
+              <FaYandexInternational size={18} />
+              Войти с Яндексом
+            </button>
+          </div>
+
           <div className="mt-6 text-center">
             <p className="text-sm text-ink-secondary">
-              Don&apos;t have an account?{' '}
+              Нет аккаунта?{' '}
               <Link href="/auth/signup" className="font-bold text-brand hover:text-brand-dark">
-                Sign up
+                Зарегистрироваться
               </Link>
             </p>
           </div>

@@ -1,0 +1,57 @@
+export default function OfferPage() {
+  return (
+    <div className="min-h-screen bg-[#1C1C1E] text-white">
+      <div className="max-w-3xl mx-auto px-6 py-16">
+        <p className="text-brand font-bold text-sm uppercase tracking-wider mb-3">Публичная оферта</p>
+        <h1 className="text-3xl font-black mb-3">Получите AI-анализ урока, план следующего занятия и готовое ДЗ</h1>
+        <p className="text-white/60 mb-8 leading-relaxed">Публичная оферта сервиса TutorAI: после урока сервис автоматически разбирает занятие, фиксирует ошибки и прогресс ученика, предлагает план следующего урока, формирует домашнее задание и готовое сообщение ученику.</p>
+        <div className="prose prose-invert prose-sm space-y-6 text-white/70 leading-relaxed">
+          <p><strong className="text-white">Павлов Иван Андреевич</strong>, самозанятый, ИНН: 332711615676, далее именуемый «Исполнитель», предлагает Вам, далее именуемому «Заказчик», заключить настоящий договор на оказание информационных услуг.</p>
+
+          <h2 className="text-xl font-bold text-white mt-8">1. Предмет договора</h2>
+          <p>Исполнитель оказывает Заказчику информационные услуги, связанные с использованием онлайн-сервиса TutorAI (tutorai.app), включая:</p>
+          <ul className="list-disc pl-6 space-y-2">
+            <li>Запись и хранение аудиоуроков</li>
+            <li>AI-транскрибация и анализ уроков</li>
+            <li>Генерация персонализированных домашних заданий</li>
+            <li>Отслеживание прогресса учеников</li>
+          </ul>
+
+          <h2 className="text-xl font-bold text-white mt-8">2. Тарифы</h2>
+          <ul className="list-disc pl-6 space-y-2">
+            <li><strong className="text-white">Starter</strong> — 490 ₽/мес, 500 AI-минут</li>
+            <li><strong className="text-white">Pro</strong> — 990 ₽/мес, 1 500 AI-минут</li>
+            <li><strong className="text-white">Power</strong> — 1 990 ₽/мес, 4 000 AI-минут</li>
+          </ul>
+          <p>Оплата производится через платёжную систему ЮKassa. Дополнительные минуты докупаются отдельно.</p>
+
+          <h2 className="text-xl font-bold text-white mt-8">3. Порядок оплаты</h2>
+          <p>Оплата осуществляется online с помощью банковской карты через платёжный шлюз ЮKassa. Заказчик выбирает тариф и производит оплату. После успешной оплаты тариф активируется автоматически.</p>
+
+          <h2 className="text-xl font-bold text-white mt-8">4. Порядок оказания услуг</h2>
+          <p>Услуги оказываются дистанционно через веб-сервис tutorai.app. После оплаты Заказчик получает доступ к функционалу выбранного тарифа. AI-минуты расходуются при обработке аудиозаписей уроков.</p>
+
+          <h2 className="text-xl font-bold text-white mt-8">5. Возврат средств</h2>
+          <p>Заказчик вправе отказаться от услуги в течение 7 дней с момента оплаты, при условии что AI-минуты не были использованы. Для возврата средств напишите на <strong className="text-white">support.tutorai@gmail.com</strong> с указанием email, используемого при оплате. Возврат средств осуществляется в течение 10 рабочих дней.</p>
+
+          <h2 className="text-xl font-bold text-white mt-8">6. Интеллектуальная собственность</h2>
+          <p>Все права на программное обеспечение принадлежат Исполнителю. Заказчику предоставляется неисключительная лицензия на использование сервиса в рамках выбранного тарифа.</p>
+
+          <h2 className="text-xl font-bold text-white mt-8">7. Ответственность</h2>
+          <p>Исполнитель не несёт ответственности за качество транскрибации, вызванное плохим качеством аудиозаписи. AI-анализ носит рекомендательный характер.</p>
+
+          <h2 className="text-xl font-bold text-white mt-8">8. Контактная информация</h2>
+          <ul className="list-disc pl-6 space-y-2">
+            <li>ФИО: Павлов Иван Андреевич</li>
+            <li>Статус: Самозанятый</li>
+            <li>ИНН: 332711615676</li>
+            <li>Телефон: +7 904 657 77 25</li>
+            <li>Email: support.tutorai@gmail.com</li>
+          </ul>
+
+          <p className="mt-8 text-white/50">Дата публикации: январь 2026 г.</p>
+        </div>
+      </div>
+    </div>
+  );
+}

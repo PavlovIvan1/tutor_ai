@@ -9,10 +9,13 @@ import type { Subscription } from '@/lib/mock-store';
 
 export default function SettingsPage() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
 
   useEffect(() => {
     const { data } = mockStore.subscription.get();
     setSubscription(data);
+    const { data: userData } = mockStore.auth.getUser();
+    if (userData?.user) setUser(userData.user);
   }, []);
 
   const currentPlan = subscription?.plan ? plans.find((p) => p.id === subscription.plan) : null;
@@ -70,36 +73,16 @@ export default function SettingsPage() {
             )}
           </Card>
 
-          {/* Profile */}
+          {/* Profile Card */}
           <Card className="p-6">
-            <h2 className="text-lg font-bold text-ink mb-4">Профиль</h2>
-            <p className="text-sm text-ink-secondary mb-4">Управление данными аккаунта.</p>
-            <button className="px-5 py-3 bg-surface-tinted text-ink font-bold rounded-2xl text-sm hover:bg-surface-border transition-all">
-              Редактировать профиль
-            </button>
-          </Card>
-
-          {/* API Keys */}
-          <Card className="p-6">
-            <h2 className="text-lg font-bold text-ink mb-4">API Keys</h2>
-            <p className="text-sm text-ink-secondary mb-4">
-              Настройте API ключ OpenAI для реального AI-анализа. Без него приложение использует mock данные.
-            </p>
-            <div className="p-3 rounded-xl bg-surface-tinted text-sm text-ink-muted">
-              API ключи настраиваются через переменные окружения на сервере.
-            </div>
-          </Card>
-
-          {/* Privacy */}
-          <Card className="p-6">
-            <h2 className="text-lg font-bold text-ink mb-4">Конфиденциальность</h2>
-            <p className="text-sm text-ink-secondary mb-4">
-              Записи уроков хранятся безопасно и доступны только вам.
-            </p>
-            <div className="space-y-2 text-sm text-ink-secondary">
-              <p>• Аудиозаписи шифруются при хранении</p>
-              <p>• Только вы имеете доступ к данным учеников</p>
-              <p>• Записи можно удалить в любой момент</p>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-brand flex items-center justify-center text-white font-black text-lg">
+                {user?.name?.[0]?.toUpperCase() || 'T'}
+              </div>
+              <div>
+                <p className="font-bold text-ink">{user?.name || 'Tutor'}</p>
+                <p className="text-sm text-ink-secondary">{user?.email || ''}</p>
+              </div>
             </div>
           </Card>
 

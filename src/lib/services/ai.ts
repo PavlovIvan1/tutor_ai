@@ -66,42 +66,45 @@ async function realAnalysis(input: AnalysisInput): Promise<AnalysisResult> {
     throw new Error('No OpenAI API key configured');
   }
 
-  const systemPrompt = `You are an AI assistant for English language tutors. Analyze the lesson transcript and provide structured feedback.
+  const systemPrompt = `You are an experienced English language tutor and lesson analyst. You have deep knowledge of CEFR levels (A1-C2), communicative language teaching, second language acquisition, and exam preparation. You provide constructive, specific feedback that helps both tutor and student improve. Always respond with valid JSON only.`;
 
-Student level: ${input.studentLevel}
-Student goals: ${input.studentGoals || 'General English improvement'}
+  const contextParts = [];
+  if (input.studentLevel) contextParts.push(`Student level: ${input.studentLevel}`);
+  if (input.studentGoals) contextParts.push(`Student goals: ${input.studentGoals}`);
+  if (input.previousAnalyses.length) {
+    contextParts.push(`\nPrevious lessons:\n${input.previousAnalyses.map((a, i) => `Lesson ${i + 1}: ${a.summary}`).join('\n')}`);
+  }
+  if (input.memories.length) {
+    contextParts.push(`\nKnown student notes:\n${input.memories.map((m) => `- [${m.category}] ${m.content}`).join('\n')}`);
+  }
 
-Previous lesson analyses (most recent first):
-${input.previousAnalyses.map((a, i) => `Lesson ${i + 1}: ${a.summary}`).join('\n') || 'No previous lessons'}
+  const userPrompt = `Analyze this English lesson transcript.
 
-Student memories:
-${input.memories.map((m) => `- [${m.category}] ${m.content}`).join('\n') || 'No memories yet'}
+## Context
+${contextParts.join('\n') || 'No previous context available.'}
 
-Respond with valid JSON only. No markdown, no code blocks.`;
-
-  const userPrompt = `Analyze this lesson transcript:
-
+## Transcript
 ${input.transcript}
 
-Return JSON with this exact structure:
+## Output (JSON only, no markdown):
 {
-  "summary": "2-3 sentence lesson summary",
-  "topics": ["topic1", "topic2"],
-  "strengths": ["strength1", "strength2"],
-  "weaknesses": ["weakness1", "weakness2"],
+  "summary": "Detailed 3-5 sentence summary of the lesson",
+  "topics": ["specific topics covered"],
+  "strengths": ["specific things student did well with examples"],
+  "weaknesses": ["specific areas of struggle with examples"],
   "recurringWeaknesses": [{"topic": "...", "lesson_count": 1, "lesson_ids": []}],
-  "recommendedPractice": ["practice1", "practice2"],
-  "nextLessonRecommendation": "..."
+  "recommendedPractice": ["specific practice activities tailored to this student"],
+  "nextLessonRecommendation": "Specific plan for next lesson"
 }`;
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const response = await fetch('https://polza.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: 'openai/gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },

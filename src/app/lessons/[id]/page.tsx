@@ -163,7 +163,7 @@ export default function LessonDetailPage() {
           )}
           {vocab.length > 0 && (
             <Card className="p-5">
-              <h3 className="text-sm font-bold text-ink-muted uppercase tracking-wider mb-3">Словарный запас</h3>
+              <h3 className="text-sm font-bold text-ink-muted uppercase tracking-wider mb-3">Interesting Vocabulary</h3>
               <div className="flex flex-wrap gap-2">
                 {vocab.map((v: string, i: number) => (
                   <span key={i} className="px-3 py-1 rounded-full bg-honey/10 text-honey text-xs font-bold">{v}</span>

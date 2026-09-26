@@ -1,43 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb, isDbConfigured, q } from '@/lib/db';
+import { q, isDbConfigured, getDb } from '@/lib/db';
+import { transcribeBase64 } from '@/lib/services/transcription';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+const POLZA_BASE = 'https://polza.ai/api/v1';
 
 async function transcribeAudio(audioBase64: string, label: string): Promise<{ text: string; segments: any[] }> {
-  const audioBuffer = Buffer.from(audioBase64, 'base64');
-
-  if (audioBuffer.length < 100) {
+  const dataBuffer = Buffer.from(audioBase64, 'base64');
+  if (dataBuffer.length < 100) {
     return { text: '', segments: [] };
   }
-
-  const formData = new FormData();
-  formData.append('file', new Blob([audioBuffer], { type: 'audio/webm' }), `${label}.webm`);
-  formData.append('model', 'whisper-1');
-  formData.append('language', 'ru');
-  formData.append('response_format', 'verbose_json');
-  formData.append('timestamp_granularities[]', 'segment');
-
-  const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` },
-    body: formData,
-  });
-
-  if (!res.ok) {
-    const errText = await res.text().catch(() => 'unknown');
-    console.error(`Whisper error (${label}):`, res.status, errText);
-    throw new Error(`Whisper failed for ${label}: ${res.status}`);
-  }
-
-  const data = await res.json();
-  return {
-    text: data.text || '',
-    segments: (data.segments || []).map((s: any) => ({
-      start: s.start,
-      end: s.end,
-      text: s.text,
-    })),
-  };
+  return transcribeBase64(audioBase64);
 }
 
 function mergeTranscripts(
@@ -198,48 +171,76 @@ export async function POST(req: NextRequest) {
       return `${time} ${s.text}`;
     }).join('\n');
 
-    const trackInfo = (hasMic || hasSystem)
-      ? `Audio sources: Microphone = TEACHER, System audio = STUDENT.`
-      : `Audio source: Mixed (single track). Please identify TEACHER vs STUDENT from context.`;
+    let trackInfo: string;
+    if (hasMic && hasSystem) {
+      trackInfo = `Audio sources: TWO TRACKS — Microphone = TEACHER, System audio = STUDENT. Speaker labels are already correct from the recording hardware.`;
+    } else if (hasSystem && !hasMic) {
+      trackInfo = `Audio source: SYSTEM AUDIO ONLY (no microphone). This recording captures what plays through the student's speakers/headphones — the teacher's voice from the video call (Zoom/Meet/etc.) and any exercise audio.
 
-    const analysisPrompt = `You are an expert English tutoring AI analyzing a ${Math.round((durationSeconds || 0) / 60)}-minute lesson.
+HOW TO IDENTIFY SPEAKERS:
+The TEACHER is the one who:
+- Asks questions: "Tell me about yourself", "What do you do?", "Can you repeat?"
+- Gives instructions: "Now read this", "Let's practice", "Try to use this word"
+- Explains grammar/vocabulary: "We use present perfect when..."
+- Provides feedback: "Good", "Excellent", "Not quite, let me explain"
+- Guides the lesson flow: "Moving on to...", "Let's go back to..."
+- Speaks with authority and control over the conversation
 
-Student: ${studentName || 'Student'}
-Level: ${studentLevel || 'unknown'}
-Goals: ${studentGoals || 'general English'}
+The STUDENT is the one who:
+- Answers questions: "My name is...", "I think...", "Yes, I did"
+- Reads aloud or practices: pronunciation exercises, reading texts
+- Asks for clarification: "What does this mean?", "How do you say...?"
+- Makes mistakes and gets corrected
+- Speaks in Russian when thinking aloud or confused
+
+LABEL: Use TEACHER: and STUDENT: prefixes on each line. If you truly cannot determine who is speaking, use UNKNOWN:.`;
+    } else {
+      trackInfo = `Audio source: Mixed (single track). Please identify TEACHER vs STUDENT from context.`;
+    }
+
+    const analysisPrompt = `You are an experienced English language tutor and lesson analyst. A ${Math.round((durationSeconds || 0) / 60)}-minute lesson has just been recorded.
+
+## Student Profile
+- Name: ${studentName || 'Student'}
+- Level: ${studentLevel || 'unknown (assess from transcript)'}
+- Goals: ${studentGoals || 'General English improvement'}
+
+## Audio Sources
 ${trackInfo}
 
-Transcript (labeled):
+## Transcript
 ${segmentLines}
 
-Return JSON (no markdown):
+## Your Task
+Analyze this lesson as if you were the tutor's mentor reviewing their teaching. Consider:
+1. The student's proficiency level and whether they're progressing
+2. What teaching methods were used and how effective they were
+3. Specific moments where the student struggled or excelled
+4. Whether the lesson aligned with the student's goals
+
+## Output (JSON only, no markdown):
 {
-  "teacher_student_transcript": "Full conversation with TEACHER: and STUDENT: labels on each line. If already labeled, keep the labels.",
-  "summary": "2-3 sentence lesson summary",
-  "topics": ["topics covered"],
-  "strengths": ["what student did well"],
-  "weaknesses": ["areas of struggle"],
-  "key_vocabulary": ["new words taught"],
-  "grammar_focus": ["grammar points"],
-  "recurring_issues": ["patterns"],
-  "next_lesson_recommendation": "what to cover next",
-  "keywords": ["keywords"],
-  "student_level_assessment": "level assessment",
+  "teacher_student_transcript": "Full clean conversation with TEACHER: and STUDENT: labels on each line. Fix any transcription errors, complete any cut-off sentences. Keep the original language of the conversation.",
+  "summary": "Detailed 3-5 sentence summary covering what was taught, how, and student's response",
+  "topics": ["specific topics covered with subtopics"],
+  "strengths": ["specific things student did well with examples from transcript"],
+  "weaknesses": ["specific areas of struggle with examples"],
+  "key_vocabulary": ["new words/expressions taught or used"],
+  "grammar_focus": ["grammar points practiced or explained"],
+  "recurring_issues": ["patterns you notice from the teaching approach"],
+  "next_lesson_recommendation": "Specific plan for next lesson based on this session",
+  "student_level_assessment": "Your assessment: A1/A2/B1/B2/C1/C2 with justification",
   "engagement_score": 85,
-  "homework": [
-    {"type": "multiple_choice", "question": "...", "options": ["A","B","C","D"], "correct_answer": "B", "explanation": "..."},
-    {"type": "fill_blank", "question": "...", "correct_answer": "...", "explanation": "..."},
-    {"type": "short_answer", "question": "...", "correct_answer": "Open-ended", "explanation": "..."}
-  ]
+  "teaching_quality_notes": "Brief notes on tutor performance: pacing, clarity, rapport"
 }`;
 
-    const analysisRes = await fetch('https://api.openai.com/v1/chat/completions', {
+    const analysisRes = await fetch('https://polza.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'openai/gpt-4o',
         messages: [
-          { role: 'system', content: 'Expert English tutoring analyst. Valid JSON only.' },
+          { role: 'system', content: `You are an expert English tutoring analyst with deep knowledge of CEFR levels (A1-C2), communicative language teaching, and second language acquisition. You provide constructive, specific feedback that helps both tutor and student improve. Always respond with valid JSON only.` },
           { role: 'user', content: analysisPrompt },
         ],
         temperature: 0.3,

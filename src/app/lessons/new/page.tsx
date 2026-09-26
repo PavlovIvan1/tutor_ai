@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import { createClient } from '@/lib/supabase/client';
 import { getInitials, getLevelColor, formatDuration, getAvatarUrl } from '@/lib/utils';
+import { mockStore } from '@/lib/mock-store';
 import type { Student } from '@/lib/types';
 
 type RecordingState = 'idle' | 'requesting' | 'recording' | 'paused' | 'stopping' | 'processing' | 'done';
@@ -258,6 +259,18 @@ function NewLessonContent() {
         const data = await res.json();
         setResult(data);
         setRecordingState('done');
+        // Deduct AI minutes
+        if (elapsed > 0) {
+          const sub = mockStore.subscription.get().data;
+          if (sub) {
+            mockStore.subscription.activate(sub.plan || 'pro', sub.yookassa_payment_id || 'direct');
+            const updated = mockStore.subscription.get().data;
+            if (updated) {
+              updated.ai_minutes_used = (updated.ai_minutes_used || 0) + Math.ceil(elapsed / 60);
+              localStorage.setItem('tutorai_mock', JSON.stringify({ ...JSON.parse(localStorage.getItem('tutorai_mock') || '{}'), subscription: updated }));
+            }
+          }
+        }
       } else {
         // Multi-chunk: send mic and system separately, then ask server to process
         // For simplicity, send all as one big payload with arrays
@@ -285,6 +298,17 @@ function NewLessonContent() {
         const data = await res.json();
         setResult(data);
         setRecordingState('done');
+        // Deduct AI minutes
+        if (elapsed > 0) {
+          const dbRaw = localStorage.getItem('tutorai_mock');
+          if (dbRaw) {
+            const db = JSON.parse(dbRaw);
+            if (db.subscription) {
+              db.subscription.ai_minutes_used = (db.subscription.ai_minutes_used || 0) + Math.ceil(elapsed / 60);
+              localStorage.setItem('tutorai_mock', JSON.stringify(db));
+            }
+          }
+        }
       }
     } catch (err: any) {
       console.error('Processing error:', err);

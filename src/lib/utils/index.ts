@@ -51,13 +51,12 @@ export function cn(...classes: (string | boolean | undefined | null)[]) {
  * No DB storage needed — avatar is always derived from the name.
  */
 export function getAvatarUrl(name: string, size = 128): string {
-  // Hash the name to get a deterministic seed
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
   }
   const seed = Math.abs(hash);
-  return `https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=${seed}&size=${size}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
+  return `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${seed}&size=${size}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
 }
 
 /**
@@ -77,4 +76,45 @@ export function getAvatarBg(name: string): string {
     hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
   }
   return colors[Math.abs(hash) % colors.length];
+}
+
+const LEVEL_BASE: Record<string, number> = { A1: 17, A2: 33, B1: 50, B2: 67, C1: 83, C2: 100 };
+
+export interface StudentSkills {
+  fluency: number;
+  grammar: number;
+  vocabulary: number;
+  pronunciation: number;
+  comprehension: number;
+  interaction: number;
+}
+
+export function calculateStudentSkills(level: string, analysis: any): StudentSkills {
+  const base = LEVEL_BASE[level] || 50;
+  const weaknesses: string[] = analysis?.weaknesses || [];
+  const strengths: string[] = analysis?.strengths || [];
+  const grammarFocus: string[] = analysis?.grammar_focus || [];
+  const vocab: string[] = analysis?.key_vocabulary || [];
+
+  const countMatches = (list: string[], keywords: string[]) =>
+    list.filter(item => keywords.some(kw => item.toLowerCase().includes(kw.toLowerCase()))).length;
+
+  const grammarWeak = countMatches(weaknesses, ['grammar', 'tense', 'verb', 'article', 'preposition', 'structure', 'sentence']);
+  const grammarStrong = countMatches(strengths, ['grammar', 'tense', 'structure']);
+  const vocabWeak = countMatches(weaknesses, ['vocabulary', 'word', 'lexical']);
+  const vocabStrong = countMatches(strengths, ['vocabulary', 'word', 'lexical', 'expressions']);
+  const fluencyWeak = countMatches(weaknesses, ['fluency', 'hesitation', 'pausing', 'speaking', 'pronunciation', 'confidence']);
+  const fluencyStrong = countMatches(strengths, ['fluency', 'speaking', 'confidence', 'pronunciation', 'expressing']);
+
+  const adjust = (base: number, weak: number, strong: number) =>
+    Math.max(5, Math.min(100, base - weak * 8 + strong * 5));
+
+  return {
+    fluency: adjust(base, fluencyWeak, fluencyStrong),
+    grammar: adjust(base, grammarWeak, grammarStrong),
+    vocabulary: adjust(base, vocabWeak, vocabStrong),
+    pronunciation: adjust(base, fluencyWeak, fluencyStrong),
+    comprehension: adjust(base, 0, Math.min(strengths.length, 2)),
+    interaction: adjust(base, fluencyWeak, Math.min(strengths.length, 2)),
+  };
 }

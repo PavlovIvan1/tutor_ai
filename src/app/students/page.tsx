@@ -5,20 +5,46 @@ import Link from 'next/link';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Card from '@/components/ui/Card';
 import EmptyState from '@/components/ui/EmptyState';
-import { createClient } from '@/lib/supabase/client';
-import { getAvatarUrl } from '@/lib/utils';
-import type { Student } from '@/lib/types';
+import Paywall from '@/components/ui/Paywall';
+import { mockStore } from '@/lib/mock-store';
+import { getAvatarUrl, getLevelColor } from '@/lib/utils';
+import SkillBars from '@/components/ui/SkillBars';
 
 export default function StudentsPage() {
-  const [students, setStudents] = useState<Student[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  const [hasSubscription, setHasSubscription] = useState(false);
 
   useEffect(() => {
-    const { data } = supabase.from('students').select('*');
-    setStudents(data || []);
-    setLoading(false);
+    const { data } = mockStore.subscription.get();
+    setHasSubscription(data?.plan != null);
+
+    async function load() {
+      try {
+        const res = await fetch('/api/stats');
+        if (res.ok) {
+          const data = await res.json();
+          setStudents(data.students || []);
+        }
+      } catch {}
+      setLoading(false);
+    }
+    load();
   }, []);
+
+  if (!hasSubscription) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-black text-ink">Students</h1>
+            <p className="text-ink-secondary mt-1">Manage your students and track their progress.</p>
+          </div>
+        </div>
+        <Paywall />
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -66,35 +92,30 @@ export default function StudentsPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {students.map((s) => (
+          {students.map((s: any) => (
             <Link key={s.id} href={`/students/${s.id}`}>
               <Card className="p-5 hover:shadow-card transition-all cursor-pointer">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 mb-3">
                   <img
                     src={getAvatarUrl(s.name)}
                     alt={s.name}
                     className="w-12 h-12 rounded-full object-cover bg-surface-tinted"
                   />
                   <div className="flex-1">
-                    <h3 className="font-bold text-ink">{s.name}</h3>
-                    <p className="text-sm text-ink-secondary">{s.goals || 'Нет целей'}</p>
-                  </div>
-                  {s.lesson_day && (
-                    <div className="text-right mr-2">
-                      <p className="text-xs font-bold text-ink">{s.lesson_day}</p>
-                      <p className="text-xs text-ink-muted">{s.lesson_time} · {s.lesson_duration || 60} мин</p>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-ink">{s.name}</h3>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${getLevelColor(s.level)}`}>{s.level}</span>
                     </div>
-                  )}
+                    <p className="text-sm text-ink-secondary">{s.goals || 'General English'}</p>
+                  </div>
                   {s.price_per_lesson && (
-                    <span className="text-sm font-black text-brand mr-2">{s.price_per_lesson.toLocaleString()} ₽</span>
+                    <span className="text-sm font-black text-brand">{s.price_per_lesson.toLocaleString()} ₽</span>
                   )}
-                  <span className="px-3 py-1 rounded-full bg-brand-light text-brand-dark text-xs font-bold">
-                    {s.level}
-                  </span>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-ink-muted">
                     <polyline points="9 18 15 12 9 6" />
                   </svg>
                 </div>
+                <SkillBars level={s.level} analysis={s.lastLesson} compact />
               </Card>
             </Link>
           ))}

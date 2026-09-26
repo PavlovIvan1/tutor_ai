@@ -52,14 +52,14 @@ export default function HelpPage() {
           <h2 className="text-lg font-bold text-ink mb-2">Still need help?</h2>
           <p className="text-sm text-ink-secondary mb-4">Contact us and we&apos;ll get back to you within 24 hours.</p>
           <a
-            href="mailto:support@tutorai.app"
+            href="mailto:support.tutorai@gmail.com"
             className="inline-flex items-center gap-2 px-5 py-3 bg-brand text-white font-bold rounded-2xl shadow-[0_4px_0_0_var(--brand-shadow)] hover:bg-brand-dark transition-all active:translate-y-[2px] active:shadow-none text-sm"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
               <polyline points="22,6 12,13 2,6" />
             </svg>
-            support@tutorai.app
+            support.tutorai@gmail.com
           </a>
         </Card>
       </div>

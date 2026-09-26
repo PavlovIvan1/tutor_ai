@@ -3,40 +3,55 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
+import { mockStore } from '@/lib/mock-store';
+import { consentStore } from '@/lib/consent-store';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import { FaYandexInternational } from 'react-icons/fa';
 
 export default function SignupPage() {
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
+  const [agreement, setAgreement] = useState(false);
+  const [newsletter, setNewsletter] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!agreement) {
+      setError('Необходимо принять пользовательское соглашение');
+      return;
+    }
+
     setLoading(true);
 
-    const { error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-      },
-    });
+    const { data, error: authError } = await mockStore.auth.signUp(email, password, fullName);
 
     if (authError) {
-      setError(authError.message);
+      setError(authError);
       setLoading(false);
       return;
     }
 
+    if (data?.user) {
+      await consentStore.save({
+        user_id: data.user.id,
+        consent_type: 'agreement',
+        granted: true,
+      });
+      await consentStore.save({
+        user_id: data.user.id,
+        consent_type: 'newsletter',
+        granted: newsletter,
+      });
+    }
+
     router.push('/dashboard');
-    router.refresh();
   };
 
   return (
@@ -49,16 +64,16 @@ export default function SignupPage() {
             </div>
             <span className="font-black text-2xl text-ink">TutorAI</span>
           </Link>
-          <h1 className="text-2xl font-black text-ink">Create your account</h1>
-          <p className="text-ink-secondary mt-2">Start teaching smarter today</p>
+          <h1 className="text-2xl font-black text-ink">Создайте аккаунт</h1>
+          <p className="text-ink-secondary mt-2">Начните преподавать умнее уже сегодня</p>
         </div>
 
         <div className="bg-white rounded-3xl border border-surface-border shadow-card p-8">
           <form onSubmit={handleSignup} className="space-y-5">
             <Input
-              label="Full name"
+              label="Имя"
               type="text"
-              placeholder="Jane Smith"
+              placeholder="Павлов Иван"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               required
@@ -72,7 +87,7 @@ export default function SignupPage() {
               required
             />
             <Input
-              label="Password"
+              label="Пароль"
               type="password"
               placeholder="••••••••"
               value={password}
@@ -81,6 +96,34 @@ export default function SignupPage() {
               minLength={6}
             />
 
+            <div className="space-y-3">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={agreement}
+                  onChange={(e) => setAgreement(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-surface-border text-brand focus:ring-brand accent-[#4CAF50]"
+                />
+                <span className="text-xs text-ink-secondary leading-tight">
+                  Я принимаю{' '}
+                  <Link href="/offer" className="font-bold text-brand hover:underline" target="_blank">пользовательское соглашение</Link>{' '}
+                  и{' '}
+                  <Link href="/privacy" className="font-bold text-brand hover:underline" target="_blank">политику конфиденциальности</Link>
+                </span>
+              </label>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={newsletter}
+                  onChange={(e) => setNewsletter(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-surface-border text-brand focus:ring-brand accent-[#4CAF50]"
+                />
+                <span className="text-xs text-ink-secondary leading-tight">
+                  Хочу получать полезные советы по преподаванию и новости TutorAI
+                </span>
+              </label>
+            </div>
+
             {error && (
               <div className="p-3 rounded-xl bg-red-50 text-coral text-sm font-semibold">
                 {error}
@@ -88,15 +131,25 @@ export default function SignupPage() {
             )}
 
             <Button type="submit" loading={loading} className="w-full">
-              Create account
+              Создать аккаунт
             </Button>
           </form>
 
+          <div className="mt-5">
+            <button
+              onClick={() => { window.location.href = '/api/auth/yandex/callback'; }}
+              className="w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-[#FC3F1D] text-white font-bold rounded-2xl shadow-[0_4px_0_0_#C13515] hover:brightness-110 active:shadow-none active:translate-y-[2px] transition-all text-sm"
+            >
+              <FaYandexInternational size={18} />
+              Войти с Яндексом
+            </button>
+          </div>
+
           <div className="mt-6 text-center">
             <p className="text-sm text-ink-secondary">
-              Already have an account?{' '}
+              Уже есть аккаунт?{' '}
               <Link href="/auth/login" className="font-bold text-brand hover:text-brand-dark">
-                Sign in
+                Войти
               </Link>
             </p>
           </div>

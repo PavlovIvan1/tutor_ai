@@ -69,6 +69,20 @@ function saveDB(db: MockDB) {
 export const mockStore = {
   auth: {
     getUser: () => {
+      // Check for Yandex OAuth user in cookie
+      if (typeof window !== 'undefined') {
+        const yandexCookie = document.cookie.split('; ').find(c => c.startsWith('yandex_user='));
+        if (yandexCookie) {
+          try {
+            const yandexUser = JSON.parse(decodeURIComponent(yandexCookie.split('=')[1]));
+            const db = getDB();
+            if (!db.user || db.user.id !== yandexUser.id) {
+              db.user = { id: yandexUser.id, email: yandexUser.email || '', name: yandexUser.name || 'Yandex User' };
+              saveDB(db);
+            }
+          } catch {}
+        }
+      }
       const db = getDB();
       return { data: { user: db.user }, error: null };
     },

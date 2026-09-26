@@ -8,7 +8,6 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import Textarea from '@/components/ui/Textarea';
 import Button from '@/components/ui/Button';
-import { createClient } from '@/lib/supabase/client';
 
 const levelOptions = [
   { value: 'A1', label: 'A1 - Beginner' },
@@ -50,41 +49,31 @@ export default function NewStudentPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
-  const supabase = createClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setError('Not authenticated');
+    try {
+      const res = await fetch('/api/students', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, level, goals, notes, lesson_day: lessonDay, lesson_time: lessonTime, lesson_duration: lessonDuration ? parseInt(lessonDuration) : null, price_per_lesson: price ? parseInt(price) : null }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        setError(err.error || 'Failed to create student');
+        setLoading(false);
+        return;
+      }
+
+      router.push('/students');
+    } catch (err: any) {
+      setError(err.message || 'Network error');
       setLoading(false);
-      return;
     }
-
-    const { error: insertError } = await supabase.from('students').insert({
-      tutor_id: user.id,
-      name,
-      email: email || null,
-      level,
-      goals: goals || null,
-      notes: notes || null,
-      lesson_day: lessonDay || null,
-      lesson_time: lessonTime || null,
-      lesson_duration: lessonDuration ? parseInt(lessonDuration) : null,
-      price_per_lesson: price ? parseInt(price) : null,
-      is_archived: false,
-    });
-
-    if (insertError) {
-      setError(insertError.message);
-      setLoading(false);
-      return;
-    }
-
-    router.push('/students');
   };
 
   return (
