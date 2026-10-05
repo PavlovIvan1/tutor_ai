@@ -4,20 +4,15 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Card from '@/components/ui/Card';
-import { mockStore, plans } from '@/lib/mock-store';
+import { mockStore, planById, lessonLimit, lessonsLeft } from '@/lib/mock-store';
 import type { Subscription } from '@/lib/mock-store';
 
 export default function DashboardPage() {
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data } = mockStore.subscription.get();
-    setSubscription(data);
     setLoading(false);
   }, []);
-
-  const hasSubscription = subscription?.plan != null;
 
   if (loading) {
     return (
@@ -27,49 +22,24 @@ export default function DashboardPage() {
     );
   }
 
-  if (!hasSubscription) {
-    return (
-      <DashboardLayout>
-        <div className="space-y-8">
+  return (
+    <DashboardLayout>
+      <div className="space-y-8">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-ink">Dashboard</h1>
             <p className="text-ink-secondary mt-1">Welcome back! Here&apos;s your teaching overview.</p>
           </div>
-
-          <Card className="p-12 flex flex-col items-center justify-center text-center">
-            <div className="w-20 h-20 rounded-2xl bg-brand-light flex items-center justify-center mb-6">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                <path d="M2 17l10 5 10-5"/>
-                <path d="M2 12l10 5 10-5"/>
-              </svg>
-            </div>
-            <h2 className="text-xl font-black text-ink mb-2">Подключите подписку</h2>
-            <p className="text-sm text-ink-secondary max-w-md mb-8">
-              Чтобы использовать AI-анализ уроков, вести учеников и генерировать домашние задания, выберите тарифный план.
-            </p>
-            <Link
-              href="/subscribe"
-              className="px-8 py-4 bg-brand text-white font-bold rounded-2xl shadow-[0_4px_0_0_#2E7D32] hover:brightness-110 active:shadow-none active:translate-y-1 transition-all text-base"
-            >
-              Выбрать тариф
-            </Link>
-          </Card>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  return (
-    <DashboardLayout>
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">Dashboard</h1>
-          <p className="text-ink-secondary mt-1">Welcome back! Here&apos;s your teaching overview.</p>
+          <Link
+            href="/dev"
+            className="shrink-0 text-sm font-bold text-brand bg-brand-light hover:bg-brand/20 px-4 py-2 rounded-xl transition-colors"
+          >
+            Dev · загрузить урок
+          </Link>
         </div>
 
         <StatsGrid />
-        <AIMinutesProgress />
+        <LessonsProgress />
         <StudentsSection />
         <RecentLessonsSection />
         <NeedsHomeworkSection />
@@ -107,7 +77,7 @@ function StatsGrid() {
   );
 }
 
-function AIMinutesProgress() {
+function LessonsProgress() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
 
   useEffect(() => {
@@ -115,26 +85,41 @@ function AIMinutesProgress() {
     setSubscription(data);
   }, []);
 
-  const aiUsed = subscription?.ai_minutes_used || 0;
-  const aiTotal = subscription?.ai_minutes_total || 500;
-  const aiPercent = aiTotal > 0 ? Math.round((aiUsed / aiTotal) * 100) : 0;
+  const used = subscription?.lessons_used || 0;
+  const total = lessonLimit(subscription);
+  const left = lessonsLeft(subscription);
+  const percent = total > 0 ? Math.round((used / total) * 100) : 0;
+  const planName = planById(subscription?.plan || null)?.name || 'Бесплатный тариф';
+  const expiresLabel = subscription?.plan && subscription?.expires_at
+    ? `до ${new Date(subscription.expires_at).toLocaleDateString('ru-RU')}`
+    : null;
 
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-bold text-ink">AI Minutes</h2>
-        <span className="text-sm text-ink-secondary">{aiUsed} / {aiTotal} min used</span>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-bold text-ink">Уроки</h2>
+          <span className="px-2.5 py-0.5 rounded-full bg-brand/10 text-brand text-xs font-bold">{planName}</span>
+        </div>
+        <span className="text-sm text-ink-secondary">{used} / {total} использовано</span>
       </div>
       <div className="w-full h-3 bg-surface-secondary rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-500"
           style={{
-            width: `${aiPercent}%`,
-            background: aiPercent > 80 ? 'var(--coral)' : aiPercent > 50 ? '#F59E0B' : 'var(--brand)',
+            width: `${percent}%`,
+            background: percent >= 100 ? 'var(--coral)' : percent > 50 ? '#F59E0B' : 'var(--brand)',
           }}
         />
       </div>
-      <p className="text-xs text-ink-secondary mt-2">{aiTotal - aiUsed} minutes remaining</p>
+      <div className="flex items-center justify-between mt-2">
+        <p className="text-xs text-ink-secondary">
+          {left} уроков осталось{expiresLabel ? ` · подписка на ${subscription?.period === 'year' ? 'год' : 'месяц'}, ${expiresLabel}` : ''}
+        </p>
+        <Link href="/subscribe" className="text-xs font-bold text-brand hover:underline">
+          {left > 0 ? 'Сменить тариф' : 'Продолжить'}
+        </Link>
+      </div>
     </Card>
   );
 }

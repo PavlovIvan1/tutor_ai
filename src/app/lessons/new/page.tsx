@@ -6,14 +6,18 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
-import { createClient } from '@/lib/supabase/client';
 import { getInitials, getLevelColor, formatDuration, getAvatarUrl } from '@/lib/utils';
-import { mockStore } from '@/lib/mock-store';
+import { mockStore, lessonsLeft, lessonLimit, planById } from '@/lib/mock-store';
+import type { Subscription } from '@/lib/mock-store';
+import Paywall from '@/components/ui/Paywall';
 import type { Student } from '@/lib/types';
 
 type RecordingState = 'idle' | 'requesting' | 'recording' | 'paused' | 'stopping' | 'processing' | 'done';
 
-const MAX_CHUNK_BYTES = 2.5 * 1024 * 1024;
+// Каждые 2 минуты запись разрезается на отдельный самодостаточный WebM-файл:
+// такой файл корректно читает Whisper (байтовое разрезание длинной записи — нет).
+const SEGMENT_MS = 2 * 60 * 1000;
+const MAX_SEGMENT_BYTES = 3 * 1024 * 1024;
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -24,19 +28,10 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-async function chunkBlob(blob: Blob): Promise<string[]> {
-  if (blob.size <= MAX_CHUNK_BYTES) {
-    return [await blobToBase64(blob)];
-  }
-  const numChunks = Math.ceil(blob.size / MAX_CHUNK_BYTES);
-  const chunkSize = Math.ceil(blob.size / numChunks);
-  const result: string[] = [];
-  for (let i = 0; i < numChunks; i++) {
-    const start = i * chunkSize;
-    const end = Math.min(start + chunkSize, blob.size);
-    result.push(await blobToBase64(blob.slice(start, end)));
-  }
-  return result;
+async function readErrorMessage(res: Response, body: any): Promise<string> {
+  if (res.status === 413) return 'Аудиофайл слишком большой для загрузки. Попробуйте записать урок короче.';
+  if (res.status === 404) return body?.error || 'Урок не найден — попробуйте записать заново.';
+  return body?.error || `Ошибка сервера (${res.status})`;
 }
 
 function NewLessonContent() {
@@ -53,6 +48,20 @@ function NewLessonContent() {
   const [result, setResult] = useState<any>(null);
   const [hasSystemAudio, setHasSystemAudio] = useState(false);
   const [systemOnly, setSystemOnly] = useState(false);
+  const [swapTracks, setSwapTracks] = useState(false);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+
+  const refreshSubscription = () => {
+    const { data } = mockStore.subscription.get();
+    setSubscription(data);
+  };
+
+  useEffect(() => {
+    refreshSubscription();
+  }, []);
+
+  const leftLessons = lessonsLeft(subscription);
+  const isFreePlan = !subscription?.plan;
 
   const micRecorderRef = useRef<MediaRecorder | null>(null);
   const systemRecorderRef = useRef<MediaRecorder | null>(null);
@@ -62,19 +71,24 @@ function NewLessonContent() {
   const systemStreamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
-  if (!supabaseRef.current) supabaseRef.current = createClient();
-  const supabase = supabaseRef.current;
+  const rotateTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const mimeTypeRef = useRef<string>('audio/webm');
+  const recordingActiveRef = useRef(false);
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase.from('students').select('*').eq('tutor_id', user.id).eq('is_archived', false).order('name');
-      setStudents(data || []);
-      if (preselectedStudentId) {
-        const student = data?.find((s: { id: string }) => s.id === preselectedStudentId);
-        if (student) setSelectedStudent(student);
+      try {
+        const res = await fetch('/api/students');
+        if (!res.ok) return;
+        const data = await res.json();
+        const list: Student[] = data.students || [];
+        setStudents(list);
+        if (preselectedStudentId) {
+          const student = list.find((s: Student) => s.id === preselectedStudentId);
+          if (student) setSelectedStudent(student);
+        }
+      } catch (e) {
+        console.error('Failed to load students:', e);
       }
     }
     load();
@@ -89,8 +103,35 @@ function NewLessonContent() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [recordingState]);
 
+  // Каждый сегмент — отдельный самодостаточный WebM (старт/стоп recorder'а)
+  const createSegmentRecorder = (stream: MediaStream, sink: Blob[]): MediaRecorder => {
+    const rec = new MediaRecorder(stream, { mimeType: mimeTypeRef.current });
+    rec.ondataavailable = (e) => { if (e.data && e.data.size > 0) sink.push(e.data); };
+    return rec;
+  };
+
+  const rotateTrack = (which: 'mic' | 'system') => {
+    const rec = which === 'mic' ? micRecorderRef.current : systemRecorderRef.current;
+    const stream = which === 'mic' ? micStreamRef.current : systemStreamRef.current;
+    const sink = which === 'mic' ? micChunksRef.current : systemChunksRef.current;
+    if (!rec || !stream || rec.state !== 'recording') return;
+
+    rec.onstop = () => {
+      if (!recordingActiveRef.current) return;
+      const next = createSegmentRecorder(stream, sink);
+      if (which === 'mic') micRecorderRef.current = next; else systemRecorderRef.current = next;
+      try { next.start(); } catch { /* stream уже остановлена */ }
+    };
+    try { rec.stop(); } catch { /* ignore */ }
+  };
+
   const startRecording = useCallback(async () => {
     if (!selectedStudent) return;
+    if (lessonsLeft(mockStore.subscription.get().data) <= 0) {
+      setError('Лимит уроков исчерпан. Продлите подписку, чтобы записывать дальше.');
+      setRecordingState('idle');
+      return;
+    }
     setRecordingState('requesting');
     setError('');
     setHasSystemAudio(false);
@@ -123,30 +164,38 @@ function NewLessonContent() {
         // User cancelled screen share — mic only
       }
 
-      // 3. Create separate MediaRecorders
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      // 3. Create separate MediaRecorders (по одному сегменту за раз)
+      mimeTypeRef.current = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
         : 'audio/webm';
 
-      // Mic recorder (TEACHER)
       micChunksRef.current = [];
+      systemChunksRef.current = [];
+      recordingActiveRef.current = true;
+
       if (micStream) {
-        const micRecorder = new MediaRecorder(micStream, { mimeType });
-        micRecorder.ondataavailable = (e) => { if (e.data.size > 0) micChunksRef.current.push(e.data); };
-        micRecorderRef.current = micRecorder;
+        micRecorderRef.current = createSegmentRecorder(micStream, micChunksRef.current);
+      } else {
+        micRecorderRef.current = null;
       }
 
-      // System recorder (STUDENT)
-      systemChunksRef.current = [];
       if (systemStream) {
-        const systemRecorder = new MediaRecorder(systemStream, { mimeType });
-        systemRecorder.ondataavailable = (e) => { if (e.data.size > 0) systemChunksRef.current.push(e.data); };
-        systemRecorderRef.current = systemRecorder;
+        systemRecorderRef.current = createSegmentRecorder(systemStream, systemChunksRef.current);
+      } else {
+        systemRecorderRef.current = null;
       }
 
       // 4. Start both
-      micRecorderRef.current?.start(1000);
-      systemRecorderRef.current?.start(1000);
+      micRecorderRef.current?.start();
+      systemRecorderRef.current?.start();
+
+      // Каждые 2 минуты закрываем текущий сегмент и открываем новый
+      if (rotateTimerRef.current) clearInterval(rotateTimerRef.current);
+      rotateTimerRef.current = setInterval(() => {
+        rotateTrack('mic');
+        rotateTrack('system');
+      }, SEGMENT_MS);
+
       setRecordingState('recording');
     } catch (err: any) {
       setError(err.name === 'NotAllowedError' ? 'Доступ к микрофону запрещён.' : err.name === 'NotFoundError' ? 'Микрофон не найден.' : err.message || 'Не удалось начать запись');
@@ -168,6 +217,10 @@ function NewLessonContent() {
 
   const endRecording = useCallback(async () => {
     setRecordingState('stopping');
+
+    // Остановить ротацию сегментов до остановки recorder'ов
+    recordingActiveRef.current = false;
+    if (rotateTimerRef.current) { clearInterval(rotateTimerRef.current); rotateTimerRef.current = null; }
 
     return new Promise<void>((resolve) => {
       let micDone = !micRecorderRef.current || micRecorderRef.current.state === 'inactive';
@@ -202,114 +255,102 @@ function NewLessonContent() {
 
   const processAudio = async () => {
     setRecordingState('processing');
-    setProcessingStatus('Preparing audio...');
+    setProcessingStatus('Подготовка аудио...');
 
     try {
-      // Build mic blob (TEACHER)
-      const micBlob = micChunksRef.current.length > 0
-        ? new Blob(micChunksRef.current, { type: 'audio/webm' })
-        : null;
+      const micSegments = micChunksRef.current;
+      const systemSegments = systemChunksRef.current;
 
-      // Build system blob (STUDENT)
-      const systemBlob = systemChunksRef.current.length > 0
-        ? new Blob(systemChunksRef.current, { type: 'audio/webm' })
-        : null;
+      const micMB = micSegments.reduce((s, b) => s + b.size, 0) / (1024 * 1024);
+      const sysMB = systemSegments.reduce((s, b) => s + b.size, 0) / (1024 * 1024);
+      setProcessingStatus(`Микрофон: ${micMB.toFixed(1)} МБ${systemSegments.length ? ` · Система: ${sysMB.toFixed(1)} МБ` : ''}`);
 
-      const micSizeMB = micBlob ? (micBlob.size / (1024 * 1024)).toFixed(1) : '0';
-      const systemSizeMB = systemBlob ? (systemBlob.size / (1024 * 1024)).toFixed(1) : '0';
-      setProcessingStatus(`Mic: ${micSizeMB} MB${systemBlob ? ` · System: ${systemSizeMB} MB` : ''}`);
-
-      // Chunk both
-      setProcessingStatus('Encoding audio...');
-      const micChunks = micBlob ? await chunkBlob(micBlob) : [];
-      const systemChunks = systemBlob ? await chunkBlob(systemBlob) : [];
-
-      const totalChunks = micChunks.length + systemChunks.length;
-      if (totalChunks > 1) {
-        setProcessingStatus(`Split into ${totalChunks} chunks`);
+      if (!micSegments.length && !systemSegments.length) {
+        throw new Error('Запись пуста — нет аудиоданных.');
       }
 
-      setProcessingStatus('Transcribing... This may take a few minutes.');
+      const oversized = [...micSegments, ...systemSegments].find((b) => b.size > MAX_SEGMENT_BYTES);
+      if (oversized) {
+        throw new Error('Сегмент записи получился слишком большим — попробуйте записать урок меньшей длительности.');
+      }
 
-      const payload: any = {
-        studentId: selectedStudent?.id,
-        studentName: selectedStudent?.name,
-        studentLevel: selectedStudent?.level,
-        studentGoals: selectedStudent?.goals,
-        durationSeconds: elapsed,
+      // 1. Создаём урок
+      setProcessingStatus('Создание урока...');
+      const initRes = await fetch('/api/lesson-audio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          init: true,
+          studentId: selectedStudent?.id,
+          studentName: selectedStudent?.name,
+          studentLevel: selectedStudent?.level,
+          studentGoals: selectedStudent?.goals,
+          durationSeconds: elapsed,
+        }),
+      });
+      const initBody = await initRes.json().catch(() => ({}));
+      if (!initRes.ok) throw new Error(await readErrorMessage(initRes, initBody));
+      const lessonId: string = initBody.lessonId;
+      if (!lessonId) throw new Error('Не удалось создать урок');
+
+      // 2. Загружаем сегменты: каждый сегмент — отдельный запрос (тело < лимита Vercel)
+      const total = micSegments.length + systemSegments.length;
+      let uploaded = 0;
+
+      const uploadTrack = async (track: 'mic' | 'system', segments: Blob[]) => {
+        for (let i = 0; i < segments.length; i++) {
+          setProcessingStatus(`Загрузка аудио ${uploaded + 1}/${total}...`);
+          const data = await blobToBase64(segments[i]);
+          const res = await fetch('/api/lesson-audio', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              lessonId,
+              studentId: selectedStudent?.id,
+              studentName: selectedStudent?.name,
+              studentLevel: selectedStudent?.level,
+              studentGoals: selectedStudent?.goals,
+              durationSeconds: elapsed,
+              track,
+              index: i,
+              data,
+            }),
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(await readErrorMessage(res, body));
+          uploaded++;
+          setProcessingStatus(`Загрузка аудио ${uploaded}/${total}...`);
+        }
       };
 
-      // Send as multiple chunks if needed, or single payload
-      if (micChunks.length <= 1 && systemChunks.length <= 1) {
-        // Single request
-        if (micChunks.length === 1) payload.micAudioBase64 = micChunks[0];
-        if (systemChunks.length === 1) payload.systemAudioBase64 = systemChunks[0];
+      // Треки загружаются параллельно, сегменты внутри трека — последовательно
+      await Promise.all([uploadTrack('mic', micSegments), uploadTrack('system', systemSegments)]);
 
-        const res = await fetch('/api/process-lesson', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
+      // 3. Финализация: склейка дорожек + AI-анализ
+      setProcessingStatus('AI-анализ урока... Это может занять минуту.');
+      const res = await fetch('/api/process-lesson', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          staged: true,
+          lessonId,
+          studentId: selectedStudent?.id,
+          studentName: selectedStudent?.name,
+          studentLevel: selectedStudent?.level,
+          studentGoals: selectedStudent?.goals,
+          durationSeconds: elapsed,
+          swapTracks,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(await readErrorMessage(res, body));
 
-        if (!res.ok) {
-          const errBody = await res.json().catch(() => ({ error: 'Unknown error' }));
-          throw new Error(errBody.error || `Server error ${res.status}`);
-        }
-
-        const data = await res.json();
-        setResult(data);
-        setRecordingState('done');
-        // Deduct AI minutes
-        if (elapsed > 0) {
-          const sub = mockStore.subscription.get().data;
-          if (sub) {
-            mockStore.subscription.activate(sub.plan || 'pro', sub.yookassa_payment_id || 'direct');
-            const updated = mockStore.subscription.get().data;
-            if (updated) {
-              updated.ai_minutes_used = (updated.ai_minutes_used || 0) + Math.ceil(elapsed / 60);
-              localStorage.setItem('tutorai_mock', JSON.stringify({ ...JSON.parse(localStorage.getItem('tutorai_mock') || '{}'), subscription: updated }));
-            }
-          }
-        }
-      } else {
-        // Multi-chunk: send mic and system separately, then ask server to process
-        // For simplicity, send all as one big payload with arrays
-        // But Vercel has 4.5MB limit per request...
-
-        // Strategy: send mic first, then system, then combine
-        // Actually, let's just send everything in one request — the chunks are already split
-        // to be under 2.5MB each
-
-        // Merge all chunks into mic and system arrays
-        payload.micChunks = micChunks;
-        payload.systemChunks = systemChunks;
-
-        const res = await fetch('/api/process-lesson', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-
-        if (!res.ok) {
-          const errBody = await res.json().catch(() => ({ error: 'Unknown error' }));
-          throw new Error(errBody.error || `Server error ${res.status}`);
-        }
-
-        const data = await res.json();
-        setResult(data);
-        setRecordingState('done');
-        // Deduct AI minutes
-        if (elapsed > 0) {
-          const dbRaw = localStorage.getItem('tutorai_mock');
-          if (dbRaw) {
-            const db = JSON.parse(dbRaw);
-            if (db.subscription) {
-              db.subscription.ai_minutes_used = (db.subscription.ai_minutes_used || 0) + Math.ceil(elapsed / 60);
-              localStorage.setItem('tutorai_mock', JSON.stringify(db));
-            }
-          }
-        }
-      }
+      // Урок списывается только после успешной обработки урока
+      mockStore.subscription.useLesson();
+      const updatedSub = mockStore.subscription.get().data;
+      setSubscription(updatedSub);
+      setResult({ ...body, lessonsLeft: lessonsLeft(updatedSub), lessonsTotal: lessonLimit(updatedSub) });
+      setRecordingState('done');
     } catch (err: any) {
       console.error('Processing error:', err);
       setError(err.message || 'Failed to process recording');
@@ -335,6 +376,8 @@ function NewLessonContent() {
       systemStreamRef.current?.getTracks().forEach((t) => t.stop());
       audioContextRef.current?.close();
       if (timerRef.current) clearInterval(timerRef.current);
+      if (rotateTimerRef.current) clearInterval(rotateTimerRef.current);
+      recordingActiveRef.current = false;
     };
   }, []);
 
@@ -343,13 +386,42 @@ function NewLessonContent() {
   return (
     <DashboardLayout>
       <div className="max-w-2xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-black text-ink">Запись урока</h1>
-          <p className="text-ink-secondary mt-1">Микрофон = Учитель, Системный звук = Ученик. Автоматическая маркировка.</p>
+        <div className="mb-8 flex items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-black text-ink">Запись урока</h1>
+            <p className="text-ink-secondary mt-1">
+              {swapTracks
+                ? 'Reverb: Системный звук = Учитель, Микрофон = Ученик.'
+                : 'Микрофон = Учитель, Системный звук = Ученик. Автоматическая маркировка.'}
+            </p>
+          </div>
+          <div className="text-right flex-shrink-0">
+            <span className="px-3 py-1 rounded-full bg-brand/10 text-brand text-xs font-bold">
+              {planById(subscription?.plan || null)?.name || 'Бесплатный тариф'}
+            </span>
+            <p className="text-xs text-ink-muted mt-1.5">
+              Осталось уроков: <strong className="text-ink">{leftLessons}</strong> из {lessonLimit(subscription)}
+            </p>
+          </div>
         </div>
 
+        {/* Лимит исчерпан */}
+        {recordingState === 'idle' && leftLessons <= 0 && (
+          <Card className="p-4">
+            <Paywall
+              title="Лимит уроков исчерпан"
+              description={
+                isFreePlan
+                  ? `Бесплатный тариф включает ${lessonLimit(subscription)} урок — он уже использован. Оформите помесячную подписку, чтобы записывать уроки дальше.`
+                  : `Лимит уроков тарифа «${planById(subscription?.plan || null)?.name}» на этот месяц исчерпан. Продлите подписку, чтобы лимит обновился.`
+              }
+              cta="Выбрать тариф"
+            />
+          </Card>
+        )}
+
         {/* Student Selection */}
-        {recordingState === 'idle' && (
+        {recordingState === 'idle' && leftLessons > 0 && (
           <Card className="p-8">
             {students.length === 0 ? (
               <div className="text-center py-8">
@@ -379,14 +451,18 @@ function NewLessonContent() {
                   <div className="flex items-start gap-3">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-brand mt-0.5 flex-shrink-0"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /></svg>
                     <div>
-                      <p className="text-xs font-bold text-ink">Микрофон → Учитель</p>
-                      <p className="text-xs text-ink-secondary">Ваш голос записывается отдельно</p>
+                      <p className="text-xs font-bold text-ink">
+                        {swapTracks ? 'Микрофон → Ученик' : 'Микрофон → Учитель'}
+                      </p>
+                      <p className="text-xs text-ink-secondary">Записывается отдельным треком</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-honey mt-0.5 flex-shrink-0"><rect x="2" y="7" width="20" height="15" rx="2" ry="2" /><polyline points="17 2 12 7 7 2" /></svg>
                     <div>
-                      <p className="text-xs font-bold text-ink">Системный звук → Ученик</p>
+                      <p className="text-xs font-bold text-ink">
+                        {swapTracks ? 'Системный звук → Учитель' : 'Системный звук → Ученик'}
+                      </p>
                       <p className="text-xs text-ink-secondary">Звук из Zoom/Meet/Teams записывается отдельно</p>
                     </div>
                   </div>
@@ -404,6 +480,25 @@ function NewLessonContent() {
                   <div className="flex-1">
                     <p className="text-sm font-bold text-ink">Только системный звук</p>
                     <p className="text-xs text-ink-secondary">Для тестов с YouTube/видео. AI сам определит кто учитель, кто ученик.</p>
+                  </div>
+                </button>
+
+                {/* Reverb: swap teacher/student tracks */}
+                <button
+                  onClick={() => setSwapTracks(!swapTracks)}
+                  className="flex items-center gap-3 p-4 rounded-2xl border-2 transition-all w-full text-left"
+                  type="button"
+                >
+                  <div className={`w-10 h-6 rounded-full relative transition-colors flex-shrink-0 ${swapTracks ? 'bg-brand' : 'bg-surface-border'}`}>
+                    <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${swapTracks ? 'left-[18px]' : 'left-0.5'}`} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-ink">Reverb</p>
+                    <p className="text-xs text-ink-secondary">
+                      {swapTracks
+                        ? 'Системный звук → Учитель, микрофон → Ученик'
+                        : 'Микрофон → Учитель, системный звук → Ученик (по умолчанию)'}
+                    </p>
                   </div>
                 </button>
 
@@ -448,12 +543,14 @@ function NewLessonContent() {
               <div className="flex items-center justify-center gap-6 mb-6">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-brand animate-pulse" />
-                  <span className="text-xs font-bold text-brand">Микрофон (Учитель)</span>
+                  <span className="text-xs font-bold text-brand">
+                    {swapTracks ? 'Микрофон (Ученик)' : 'Микрофон (Учитель)'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className={`w-3 h-3 rounded-full ${hasSystemAudio ? 'bg-honey animate-pulse' : 'bg-gray-300'}`} />
                   <span className={`text-xs font-bold ${hasSystemAudio ? 'text-honey' : 'text-ink-muted'}`}>
-                    {hasSystemAudio ? 'Система (Ученик)' : 'Без системного звука'}
+                    {hasSystemAudio ? (swapTracks ? 'Система (Учитель)' : 'Система (Ученик)') : 'Без системного звука'}
                   </span>
                 </div>
               </div>
@@ -496,7 +593,7 @@ function NewLessonContent() {
             </div>
             <h2 className="text-xl font-bold text-ink mb-2">Обработка урока...</h2>
             <p className="text-sm text-ink-secondary">{processingStatus}</p>
-            <p className="text-xs text-ink-muted mt-2">Транскрибация двух дорожек + AI анализ. 2-5 минут.</p>
+            <p className="text-xs text-ink-muted mt-2">Сегменты загружаются и транскрибируются по очереди, затем AI-анализ. 60-минутный урок — до 10 минут.</p>
           </Card>
         )}
 
@@ -511,6 +608,9 @@ function NewLessonContent() {
                 <div>
                   <h2 className="text-lg font-bold text-ink">Урок записан и проанализирован</h2>
                   <p className="text-sm text-ink-secondary">{selectedStudent?.name} {result.dualTrack && '· Две дорожки'}</p>
+                  <p className="text-xs text-ink-muted mt-1">
+                    Списано 1 урок · Осталось {result.lessonsLeft} из {result.lessonsTotal}
+                  </p>
                 </div>
               </div>
             </Card>

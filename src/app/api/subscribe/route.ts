@@ -1,22 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 const YOOKASSA_SHOP_ID = process.env.YOOKASSA_SHOP_ID || '';
 const YOOKASSA_SECRET_KEY = process.env.YOOKASSA_SECRET_KEY || '';
 
 const planPrices: Record<string, string> = {
-  starter: '490.00',
-  pro: '990.00',
-  power: '1990.00',
+  starter: '890.00',
+  pro: '1490.00',
+  power: '2490.00',
 };
 
 export async function POST(req: NextRequest) {
-  const { planId, return_url } = await req.json();
+  const { planId, return_url, period } = await req.json();
 
   if (!planId || !planPrices[planId]) {
     return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
   }
 
-  const price = planPrices[planId];
+  const billing: 'month' | 'year' = period === 'year' ? 'year' : 'month';
+  const monthPrice = parseFloat(planPrices[planId]);
+  // Год: цена × 12 со скидкой 35%
+  const price = (billing === 'year' ? Math.round(monthPrice * 12 * 0.65) : monthPrice).toFixed(2);
 
   // Mock mode — no real YooKassa credentials
   if (!YOOKASSA_SHOP_ID || YOOKASSA_SHOP_ID === 'YOUR_SHOP_ID') {
@@ -24,7 +29,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       mock: true,
       payment_id: mockPaymentId,
-      confirmation_url: `${return_url || 'http://localhost:3000/subscribe'}?payment_id=${mockPaymentId}&status=succeeded&plan=${planId}`,
+      confirmation_url: `${return_url || 'http://localhost:3000/subscribe'}?payment_id=${mockPaymentId}&status=succeeded&plan=${planId}&period=${billing}`,
     });
   }
 
@@ -49,9 +54,10 @@ export async function POST(req: NextRequest) {
         type: 'redirect',
         return_url: return_url || 'http://localhost:3000/subscribe',
       },
-      description: `TutorAI — ${planId} subscription`,
+      description: `TutorAI — тариф ${planId}, подписка на ${billing === 'year' ? '1 год' : '1 месяц'}`,
       metadata: {
         plan_id: planId,
+        period: billing,
       },
     }),
   });

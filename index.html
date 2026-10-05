@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Storyboard — Я перешёл с Claude Code на OpenCode</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+
+<style>
+/* ============================================================
+   STORYBOARD — «Я перешёл с Claude Code на OpenCode»
+   11 cinematic frames · 1920×1080 · light minimal
+   Навигация: ← → · Space · Home/End · H (скрыть HUD)
+   ============================================================ */
+
+/* --- Локальный CoFo Kak ( Trial, установлен в систему ) --- */
+@font-face {
+  font-family: 'CoFo Kak';
+  src: local('CoFoKakTrial-Regular'), local('CoFo Kak Trial');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'CoFo Kak';
+  src: local('CoFoKakTrial-Medium'), local('CoFo Kak Trial Medium');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'CoFo Kak';
+  src: local('CoFoKakTrial-Black'), local('CoFo Kak Trial Black');
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --scale: 1;
+
+  --bg: #ffffff;
+  --ink: #0b0b0c;
+  --ink-2: #55555d;
+  --ink-3: #9a9aa3;
+  --line: #e6e6ea;
+  --line-strong: #d2d2d8;
+  --accent: #00a65a;
+
+  --font-display: 'CoFo Kak', 'Manrope', -apple-system, 'Segoe UI', sans-serif;
+  --font-text: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-text);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============ STAGE / FRAMES ============ */
+
+.viewport {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+}
+
+.frame {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  opacity: 0;
+  visibility: hidden;
+  z-index: 1;
+  transition: opacity .6s ease, visibility 0s linear .6s;
+}
+
+.frame.is-active {
+  opacity: 1;
+  visibility: visible;
+  z-index: 2;
+  transition: opacity .6s ease, visibility 0s linear 0s;
+}
+
+/* Кадр 1920×1080, масштабируется под viewport */
+.frame__inner {
+  position: relative;
+  flex: none;
+  width: 1920px;
+  height: 1080px;
+  padding: 140px 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: var(--bg);
+  transform: scale(calc(var(--scale) * 1.04));
+  transition: transform .9s cubic-bezier(.22, 1, .36, 1);
+  will-change: transform;
+}
+
+.frame.is-active .frame__inner {
+  transform: scale(var(--scale));
+}
+
+/* Метка сцены — сверху, чтобы контент оставался по центру */
+.kicker {
+  position: absolute;
+  top: 92px;
+  left: 0;
+  right: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: .26em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* ============ ТИПОГРАФИКА ============ */
+
+.display-xl {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 160px;
+  line-height: .94;
+  letter-spacing: -.03em;
+}
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 96px;
+  line-height: 1.02;
+  letter-spacing: -.02em;
+}
+
+.display--sm { font-size: 80px; }
+
+.lead {
+  font-size: 40px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+
+.lead--lg { font-size: 48px; }
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+}
+
+.stack--tight { gap: 28px; }
+.stack--wide { gap: 64px; }
+
+.accent { color: var(--accent); }
+.muted { color: var(--ink-3); }
+
+/* ============ ЭЛЕМЕНТЫ ============ */
+
+/* Тонкая стрелка */
+.arrow {
+  position: relative;
+  display: inline-block;
+  width: 72px;
+  height: 2px;
+  background: currentColor;
+  color: var(--ink-3);
+  flex: none;
+}
+
+.arrow::after {
+  content: '';
+  position: absolute;
+  right: -7px;
+  top: 50%;
+  width: 15px;
+  height: 15px;
+  border-top: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.arrow--lg { width: 96px; }
+.arrow--sm { width: 48px; }
+.arrow--accent { color: var(--accent); }
+.arrow--ink { color: var(--ink); }
+
+/* Разделитель */
+.rule {
+  width: 640px;
+  height: 1px;
+  background: var(--line);
+}
+
+.rule--sm { width: 420px; }
+
+.rule-v {
+  width: 1px;
+  align-self: stretch;
+  background: var(--line);
+}
+
+/* Пилюля / чип */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 18px 32px;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg);
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.chip--accent {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.chip--ghost {
+  border-color: var(--line);
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* Узел диаграммы */
+.node {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 300px;
+  padding: 44px 52px;
+  border: 2px solid var(--line-strong);
+  border-radius: 24px;
+  background: var(--bg);
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 44px;
+  line-height: 1;
+  letter-spacing: -.01em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.node--accent {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.node--sm {
+  min-width: 0;
+  padding: 28px 40px;
+  font-size: 36px;
+  border-radius: 18px;
+}
+
+/* Горизонтальный ряд элементов */
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 36px;
+}
+
+/* Мелкая подпись */
+.label {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: .26em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.label--accent { color: var(--accent); }
+
+/* ============ 01 · HOOK ============ */
+
+.hook-line {
+  display: flex;
+  align-items: center;
+  gap: 44px;
+  font-size: 52px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+
+.hook-line .from { color: var(--ink-3); }
+.hook-line .to { color: var(--ink); font-weight: 700; }
+
+/* ============ 03 · AGENT VS CHAT ============ */
+
+.split {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 72px;
+}
+
+.split__col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 36px;
+}
+
+.split__title {
+  font-size: 40px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.chain {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+
+.chain .arrow { width: 52px; }
+
+/* ============ 04 · PROBLEM ============ */
+
+.limit-row {
+  display: flex;
+  align-items: center;
+  gap: 48px;
+}
+
+.limit {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 250px;
+  line-height: .9;
+  letter-spacing: -.04em;
+  color: var(--ink);
+}
+
+.limit-word {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.limit-bar {
+  width: 560px;
+  height: 14px;
+  background: var(--accent);
+  border-radius: 999px;
+}
+
+/* ============ 05 · ALTERNATIVES ============ */
+
+/* Абстрактные provider/model элементы вокруг центра */
+.orbit-chip {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+/* ============ 07 · MAIN ADVANTAGE ============ */
+
+.frame__inner--top {
+  justify-content: flex-start;
+  padding-top: 210px;
+}
+
+.fig {
+  position: absolute;
+  inset: 0;
+}
+
+.hub {
+  position: absolute;
+  left: 960px;
+  top: 660px;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 64px;
+  border: 2px solid var(--accent);
+  border-radius: 24px;
+  background: var(--bg);
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 46px;
+  letter-spacing: -.01em;
+  color: var(--accent);
+}
+
+.model {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+/* Соединители: линия от центра хаба к модели */
+.conn {
+  position: absolute;
+  left: 960px;
+  top: 660px;
+  width: var(--len);
+  height: 2px;
+  margin-top: -1px;
+  background: var(--line-strong);
+  transform-origin: 0 50%;
+  transform: rotate(var(--rot));
+  z-index: 1;
+}
+
+/* ============ 08 · MY SETUP ============ */
+
+.card {
+  width: 640px;
+  padding: 60px 48px;
+  border: 2px solid var(--line);
+  border-radius: 28px;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 34px;
+  text-align: center;
+}
+
+.card__name {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 56px;
+  line-height: 1;
+  letter-spacing: -.02em;
+}
+
+.card__flow {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  font-size: 30px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+/* ============ 09 · CAVEAT ============ */
+
+.equation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+}
+
+.op {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 56px;
+  color: var(--ink-3);
+  line-height: 1;
+}
+
+/* ============ 10 · COMPARISON ============ */
+
+.compare {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 56px;
+}
+
+.compare .chip { padding: 22px 36px; font-size: 28px; }
+
+/* ============ 11 · ENDING ============ */
+
+.punch {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 104px;
+  line-height: 1;
+  letter-spacing: -.03em;
+  color: var(--accent);
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  font-size: 30px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.foot b { font-weight: 700; color: var(--ink); }
+
+/* ============ HUD ============ */
+
+.hud {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  background: rgba(255, 255, 255, .92);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--line);
+  transition: opacity .3s ease, transform .3s ease;
+}
+
+body.hud-hidden .hud {
+  opacity: 0;
+  transform: translateY(100%);
+  pointer-events: none;
+}
+
+.hud__progress {
+  height: 2px;
+  background: var(--line);
+}
+
+.hud__progress i {
+  display: block;
+  height: 100%;
+  width: 9.09%;
+  background: var(--accent);
+  transition: width .5s cubic-bezier(.22, 1, .36, 1);
+}
+
+.hud__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 14px 28px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.hud__left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 260px;
+}
+
+.hud__left b {
+  color: var(--ink);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud__dots {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hud__dots button {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--line-strong);
+  cursor: pointer;
+  transition: background .3s ease, transform .3s ease;
+}
+
+.hud__dots button:hover { transform: scale(1.4); }
+
+.hud__dots button.is-active {
+  background: var(--accent);
+  transform: scale(1.35);
+}
+
+.hud__hint {
+  min-width: 260px;
+  text-align: right;
+  letter-spacing: .14em;
+  color: var(--ink-3);
+}
+
+/* ============ АДАПТИВНОСТЬ ============ */
+
+@media (max-width: 900px) {
+  .hud__row { padding: 10px 14px; font-size: 11px; letter-spacing: .1em; }
+  .hud__left, .hud__hint { min-width: 0; }
+  .hud__hint { display: none; }
+}
+</style>
+</head>
+
+<body>
+
+<main class="viewport" id="viewport">
+
+  <!-- ============ 01 · HOOK ============ -->
+  <section class="frame is-active" data-name="HOOK">
+    <div class="frame__inner">
+      <p class="kicker">01 · Hook</p>
+      <div class="stack stack--wide">
+        <h1 class="display-xl">ЗАЧЕМ ПЛАТИТЬ?</h1>
+        <div class="hook-line">
+          <span class="from">Claude&nbsp;Code</span>
+          <span class="arrow arrow--accent arrow--lg"></span>
+          <span class="to">OpenCode</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 02 · CLAUDE CODE ============ -->
+  <section class="frame" data-name="Claude Code">
+    <div class="frame__inner">
+      <p class="kicker">02 · Claude Code</p>
+      <div class="stack stack--wide">
+        <div class="stack stack--tight">
+          <h2 class="display">До OpenCode — Claude&nbsp;Code</h2>
+          <p class="lead">AI-агент прямо в проекте</p>
+        </div>
+        <div class="row">
+          <div class="node">Project</div>
+          <span class="arrow arrow--lg"></span>
+          <div class="node node--accent">AI Agent</div>
+          <span class="arrow arrow--lg"></span>
+          <div class="node">Code</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 03 · AGENT VS CHAT ============ -->
+  <section class="frame" data-name="Agent vs Chat">
+    <div class="frame__inner">
+      <p class="kicker">03 · Agent vs Chat</p>
+      <div class="stack stack--wide">
+        <h2 class="display">Агент ≠ обычный чат</h2>
+        <div class="split">
+          <div class="split__col">
+            <p class="label">Чат</p>
+            <p class="split__title">вручную даёшь файлы</p>
+          </div>
+          <div class="rule-v"></div>
+          <div class="split__col">
+            <p class="label label--accent">Агент</p>
+            <div class="chain">
+              <span class="chip">видит проект</span>
+              <span class="arrow arrow--accent"></span>
+              <span class="chip">работает с файлами</span>
+              <span class="arrow arrow--accent"></span>
+              <span class="chip">запускает команды</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 04 · PROBLEM ============ -->
+  <section class="frame" data-name="Problem">
+    <div class="frame__inner">
+      <p class="kicker">04 · Problem</p>
+      <div class="stack stack--wide">
+        <h2 class="display display--sm">Проблема — лимиты</h2>
+        <div class="stack stack--tight">
+          <div class="limit-row">
+            <span class="limit-word">Работаешь</span>
+            <span class="arrow arrow--accent arrow--lg"></span>
+            <span class="limit">ЛИМИТ</span>
+            <span class="arrow arrow--accent arrow--lg"></span>
+            <span class="limit-word">Ждёшь</span>
+          </div>
+          <div class="limit-bar"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 05 · ALTERNATIVES ============ -->
+  <section class="frame" data-name="Alternatives">
+    <div class="frame__inner">
+      <p class="kicker">05 · Alternatives</p>
+
+      <span class="chip chip--ghost orbit-chip" style="left:300px; top:290px;">Provider 01</span>
+      <span class="chip chip--ghost orbit-chip" style="left:640px; top:175px;">Model A</span>
+      <span class="chip chip--ghost orbit-chip" style="left:1280px; top:175px;">Provider 02</span>
+      <span class="chip chip--ghost orbit-chip" style="left:1620px; top:290px;">Model B</span>
+      <span class="chip chip--ghost orbit-chip" style="left:300px; top:790px;">Model C</span>
+      <span class="chip chip--ghost orbit-chip" style="left:640px; top:905px;">Provider 03</span>
+      <span class="chip chip--ghost orbit-chip" style="left:1280px; top:905px;">Local runtime</span>
+      <span class="chip chip--ghost orbit-chip" style="left:1620px; top:790px;">API</span>
+
+      <div class="stack stack--tight">
+        <h2 class="display">А зачем просто терпеть?</h2>
+        <p class="lead">Почему бы не посмотреть альтернативы?</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 06 · OPENCODE ============ -->
+  <section class="frame" data-name="OpenCode">
+    <div class="frame__inner">
+      <p class="kicker">06 · OpenCode</p>
+      <div class="stack stack--wide">
+        <div class="stack stack--tight">
+          <h1 class="display-xl">OpenCode</h1>
+          <p class="lead lead--lg">
+            Один инструмент
+            <span class="arrow arrow--accent arrow--lg" style="vertical-align: middle; margin: 0 20px;"></span>
+            разные модели
+          </p>
+        </div>
+        <div class="row">
+          <div class="node node--accent">OpenCode</div>
+          <span class="arrow arrow--lg"></span>
+          <div class="node">Provider</div>
+          <span class="arrow arrow--lg"></span>
+          <div class="node">Model</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 07 · MAIN ADVANTAGE ============ -->
+  <section class="frame" data-name="Main advantage">
+    <div class="frame__inner frame__inner--top">
+      <p class="kicker">07 · Main advantage</p>
+      <h2 class="display">Главный плюс — выбор</h2>
+
+      <div class="fig">
+        <!-- соединители (длина и угол заданы в CSS-переменных) -->
+        <span class="conn" style="--len:525px; --rot:-158.8deg;"></span>
+        <span class="conn" style="--len:490px; --rot:180deg;"></span>
+        <span class="conn" style="--len:525px; --rot:158.8deg;"></span>
+        <span class="conn" style="--len:525px; --rot:-21.2deg;"></span>
+        <span class="conn" style="--len:490px; --rot:0deg;"></span>
+        <span class="conn" style="--len:525px; --rot:21.2deg;"></span>
+
+        <span class="chip model" style="left:470px; top:470px;">GPT-5</span>
+        <span class="chip model" style="left:470px; top:660px;">Gemini</span>
+        <span class="chip model" style="left:470px; top:850px;">Qwen</span>
+        <span class="chip model" style="left:1450px; top:470px;">Llama</span>
+        <span class="chip model" style="left:1450px; top:660px;">Gemma</span>
+        <span class="chip model" style="left:1450px; top:850px;">MiMo</span>
+
+        <span class="hub">OpenCode</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 08 · MY SETUP ============ -->
+  <section class="frame" data-name="My setup">
+    <div class="frame__inner">
+      <p class="kicker">08 · My setup</p>
+      <div class="stack stack--wide">
+        <h2 class="display">Мой setup</h2>
+        <div class="row">
+          <div class="card">
+            <p class="card__name">Gemma 4 31B</p>
+            <div class="card__flow">
+              <span class="arrow arrow--accent"></span>
+              <span>research / data parsing</span>
+            </div>
+          </div>
+          <div class="card">
+            <p class="card__name">MiMo V2.5</p>
+            <div class="card__flow">
+              <span class="arrow arrow--accent"></span>
+              <span>complex coding</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 09 · IMPORTANT CAVEAT ============ -->
+  <section class="frame" data-name="Important caveat">
+    <div class="frame__inner">
+      <p class="kicker">09 · Important caveat</p>
+      <div class="stack stack--wide">
+        <div class="stack stack--tight">
+          <h2 class="display">OpenCode ≠ бесплатно</h2>
+          <p class="lead">Стоимость зависит от provider и модели</p>
+        </div>
+        <div class="equation">
+          <span class="node node--sm node--accent">OpenCode</span>
+          <span class="op">+</span>
+          <span class="node node--sm">Provider</span>
+          <span class="op">+</span>
+          <span class="node node--sm">Model</span>
+          <span class="op">=</span>
+          <span class="node node--sm node--accent">Cost</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 10 · COMPARISON ============ -->
+  <section class="frame" data-name="Comparison">
+    <div class="frame__inner">
+      <p class="kicker">10 · Comparison</p>
+      <div class="stack stack--wide">
+        <h2 class="display">Claude Code vs OpenCode</h2>
+        <div class="compare">
+          <div class="chain">
+            <span class="chip">Claude Code</span>
+            <span class="arrow"></span>
+            <span class="chip">Anthropic</span>
+            <span class="arrow"></span>
+            <span class="chip">Claude</span>
+          </div>
+          <div class="rule rule--sm"></div>
+          <div class="chain">
+            <span class="chip">OpenCode</span>
+            <span class="arrow"></span>
+            <span class="chip">different providers</span>
+            <span class="arrow"></span>
+            <span class="chip">different models</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 11 · ENDING ============ -->
+  <section class="frame" data-name="Ending">
+    <div class="frame__inner">
+      <p class="kicker">11 · Ending</p>
+      <div class="stack stack--wide">
+        <div class="stack stack--tight">
+          <h2 class="display">Я остаюсь на OpenCode</h2>
+          <p class="punch">Пока.</p>
+          <p class="lead">Продолжаю тестировать модели и workflow</p>
+        </div>
+        <div class="rule"></div>
+        <p class="foot">
+          <span>Setup + MCP + полезные материалы</span>
+          <span class="arrow arrow--accent"></span>
+          <b>Telegram</b>
+        </p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- HUD: индикатор текущего frame -->
+<div class="hud" id="hud">
+  <div class="hud__progress"><i id="progress"></i></div>
+  <div class="hud__row">
+    <div class="hud__left">
+      <b id="counter">01 / 11</b>
+      <span id="sceneName">Hook</span>
+    </div>
+    <div class="hud__dots" id="dots"></div>
+    <div class="hud__hint">← → · Space · H</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var frames = Array.prototype.slice.call(document.querySelectorAll('.frame'));
+  var counter = document.getElementById('counter');
+  var sceneName = document.getElementById('sceneName');
+  var progress = document.getElementById('progress');
+  var dotsBox = document.getElementById('dots');
+  var total = frames.length;
+  var current = 0;
+
+  /* --- Масштаб кадра 1920×1080 под viewport --- */
+  function fit() {
+    var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    root.style.setProperty('--scale', s);
+  }
+  window.addEventListener('resize', fit);
+  fit();
+
+  /* --- Точки-навигатор --- */
+  frames.forEach(function (frame, i) {
+    var dot = document.createElement('button');
+    dot.type = 'button';
+    dot.setAttribute('aria-label', 'Frame ' + (i + 1));
+    dot.addEventListener('click', function () { go(i); });
+    dotsBox.appendChild(dot);
+  });
+  var dots = Array.prototype.slice.call(dotsBox.children);
+
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+
+  function go(i) {
+    i = Math.max(0, Math.min(total - 1, i));
+    current = i;
+    frames.forEach(function (f, k) { f.classList.toggle('is-active', k === i); });
+    dots.forEach(function (d, k) { d.classList.toggle('is-active', k === i); });
+    counter.textContent = pad(i + 1) + ' / ' + pad(total);
+    sceneName.textContent = frames[i].getAttribute('data-name');
+    progress.style.width = ((i + 1) / total * 100) + '%';
+    if (history.replaceState) history.replaceState(null, '', '#' + (i + 1));
+  }
+
+  function next() { go(current + 1); }
+  function prev() { go(current - 1); }
+
+  /* --- Клавиатура --- */
+  var lock = false;
+  document.addEventListener('keydown', function (e) {
+    switch (e.key) {
+      case 'ArrowRight':
+      case 'ArrowDown':
+      case 'PageDown':
+      case ' ':
+        e.preventDefault(); next(); break;
+      case 'ArrowLeft':
+      case 'ArrowUp':
+      case 'PageUp':
+        e.preventDefault(); prev(); break;
+      case 'Home':
+        e.preventDefault(); go(0); break;
+      case 'End':
+        e.preventDefault(); go(total - 1); break;
+      case 'h':
+      case 'H':
+      case 'ь':
+      case 'Ь':
+        document.body.classList.toggle('hud-hidden'); break;
+      default:
+        if (/^[1-9]$/.test(e.key)) go(parseInt(e.key, 10) - 1);
+    }
+  });
+
+  /* --- Колесо мыши (с защитой от дребезга) --- */
+  window.addEventListener('wheel', function (e) {
+    if (lock) return;
+    if (Math.abs(e.deltaY) < 12 && Math.abs(e.deltaX) < 12) return;
+    lock = true;
+    (e.deltaY > 0 || e.deltaX > 0) ? next() : prev();
+    setTimeout(function () { lock = false; }, 700);
+  }, { passive: true });
+
+  /* --- Свайпы на тач-устройствах --- */
+  var x0 = null, y0 = null;
+  window.addEventListener('touchstart', function (e) {
+    x0 = e.touches[0].clientX;
+    y0 = e.touches[0].clientY;
+  }, { passive: true });
+  window.addEventListener('touchend', function (e) {
+    if (x0 === null) return;
+    var dx = e.changedTouches[0].clientX - x0;
+    var dy = e.changedTouches[0].clientY - y0;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) {
+      dx < 0 ? next() : prev();
+    }
+    x0 = y0 = null;
+  }, { passive: true });
+
+  /* --- Стартовая сцена из URL (#3) --- */
+  var h = parseInt((location.hash || '').replace('#', ''), 10);
+  go(isNaN(h) ? 0 : h - 1);
+})();
+</script>
+
+</body>
+</html>

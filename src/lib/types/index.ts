@@ -107,9 +107,11 @@ export interface Homework {
   updated_at: string;
   questions?: HomeworkQuestion[];
   student?: Student;
+  theory?: { topic?: string; explanation?: string; examples?: string[] } | null;
+  options?: Record<string, any> | null;
 }
 
-export type QuestionType = 'multiple_choice' | 'fill_blank' | 'short_answer';
+export type QuestionType = 'multiple_choice' | 'fill_blank' | 'short_answer' | 'writing';
 
 export interface HomeworkQuestion {
   id: string;

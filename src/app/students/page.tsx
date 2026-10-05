@@ -5,20 +5,12 @@ import Link from 'next/link';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Card from '@/components/ui/Card';
 import EmptyState from '@/components/ui/EmptyState';
-import Paywall from '@/components/ui/Paywall';
-import { mockStore } from '@/lib/mock-store';
 import { getAvatarUrl, getLevelColor } from '@/lib/utils';
-import SkillBars from '@/components/ui/SkillBars';
 
 export default function StudentsPage() {
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hasSubscription, setHasSubscription] = useState(false);
-
   useEffect(() => {
-    const { data } = mockStore.subscription.get();
-    setHasSubscription(data?.plan != null);
-
     async function load() {
       try {
         const res = await fetch('/api/stats');
@@ -31,20 +23,6 @@ export default function StudentsPage() {
     }
     load();
   }, []);
-
-  if (!hasSubscription) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-black text-ink">Students</h1>
-            <p className="text-ink-secondary mt-1">Manage your students and track their progress.</p>
-          </div>
-        </div>
-        <Paywall />
-      </DashboardLayout>
-    );
-  }
 
   return (
     <DashboardLayout>
@@ -91,7 +69,7 @@ export default function StudentsPage() {
           />
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="flex flex-col gap-4">
           {students.map((s: any) => (
             <Link key={s.id} href={`/students/${s.id}`}>
               <Card className="p-5 hover:shadow-card transition-all cursor-pointer">
@@ -108,14 +86,10 @@ export default function StudentsPage() {
                     </div>
                     <p className="text-sm text-ink-secondary">{s.goals || 'General English'}</p>
                   </div>
-                  {s.price_per_lesson && (
-                    <span className="text-sm font-black text-brand">{s.price_per_lesson.toLocaleString()} ₽</span>
-                  )}
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-ink-muted">
                     <polyline points="9 18 15 12 9 6" />
                   </svg>
                 </div>
-                <SkillBars level={s.level} analysis={s.lastLesson} compact />
               </Card>
             </Link>
           ))}

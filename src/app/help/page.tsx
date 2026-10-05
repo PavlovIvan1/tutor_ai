@@ -9,7 +9,7 @@ const faqs = [
   { q: 'Is my audio data secure?', a: 'Yes. Audio recordings are processed locally or encrypted in transit. We never share your data with third parties. You can delete recordings at any time.' },
   { q: 'Can I use TutorAI without an OpenAI API key?', a: 'Yes! The app works in mock mode with sample data. To use real AI analysis, configure your OpenAI API key in Settings.' },
   { q: 'What languages are supported?', a: 'Currently English, Russian, and Ukrainian. More languages coming soon.' },
-  { q: 'How do AI minutes work?', a: 'AI minutes are the total audio processing time included in your plan. For example, a 60-minute lesson uses 60 AI minutes. You can buy additional minutes if needed.' },
+  { q: 'How do lessons work?', a: 'One lesson is one start → stop recording cycle, no matter how long it was. The Free plan includes 1 lesson; paid packs add 4, 12 or 30 lessons on top of everything else.' },
   { q: 'Can I export student data?', a: 'Yes. Go to a student\'s profile and click Export to download their progress and lesson history as PDF.' },
 ];
 

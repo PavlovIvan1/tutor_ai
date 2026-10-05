@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { q, isDbConfigured, getDb } from '@/lib/db';
 import { transcribeBase64 } from '@/lib/services/transcription';
+import { ANALYSIS_SYSTEM_PROMPT, buildAnalysisPrompt, materialsToPromptText, normalizeQuestionType, pickMaterials } from '@/lib/prompts';
+import { normalizeHomeworkOptions, scrubHomeworkQuestion } from '@/lib/homework';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 const POLZA_BASE = 'https://polza.ai/api/v1';
@@ -60,20 +66,30 @@ export async function POST(req: NextRequest) {
     studentLevel,
     studentGoals,
     durationSeconds,
+    swapTracks = false, // Reverb: микрофон = ученик, системный звук = учитель
+    staged = false,     // аудио уже загружено через /api/lesson-audio
+    lessonId: stagedLessonId,
   } = body;
 
   // Merge single + array forms
-  const micBase64List: string[] = [...micChunks.filter((c: string) => c?.length > 100)];
+  let micBase64List: string[] = [...micChunks.filter((c: string) => c?.length > 100)];
   if (micAudioBase64?.length > 100) micBase64List.push(micAudioBase64);
 
-  const systemBase64List: string[] = [...systemChunks.filter((c: string) => c?.length > 100)];
+  let systemBase64List: string[] = [...systemChunks.filter((c: string) => c?.length > 100)];
   if (systemAudioBase64?.length > 100) systemBase64List.push(systemAudioBase64);
+
+  // Reverb: меняем треки местами — микрофон становится учеником, системный звук учителем
+  if (swapTracks && micBase64List.length && systemBase64List.length) {
+    const tmp = micBase64List;
+    micBase64List = systemBase64List;
+    systemBase64List = tmp;
+  }
 
   const hasMic = micBase64List.length > 0;
   const hasSystem = systemBase64List.length > 0;
   const hasLegacy = audioBase64 && audioBase64.length > 100;
 
-  if (!hasMic && !hasSystem && !hasLegacy) {
+  if (!staged && !hasMic && !hasSystem && !hasLegacy) {
     console.error('No audio provided');
     return NextResponse.json({ error: 'No audio provided' }, { status: 400 });
   }
@@ -104,26 +120,77 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  let lessonId = crypto.randomUUID();
+  let lessonId: string;
+  let stagedHasMic = false;
+  let stagedHasSystem = false;
+  let effectiveDuration = Number(durationSeconds) || 0;
+
+  if (staged) {
+    if (!stagedLessonId) {
+      return NextResponse.json({ error: 'lessonId is required for staged processing' }, { status: 400 });
+    }
+    lessonId = String(stagedLessonId);
+    const lessonRows = await q(sql, sql`SELECT id, duration_seconds FROM lessons WHERE id = ${lessonId} LIMIT 1`);
+    if (!lessonRows.length) {
+      return NextResponse.json({ error: 'Lesson not found' }, { status: 404 });
+    }
+    if (!effectiveDuration) effectiveDuration = Number(lessonRows[0].duration_seconds) || 0;
+  } else {
+    lessonId = crypto.randomUUID();
+  }
 
   try {
     // 1. Create lesson record
-    await q(sql, sql`INSERT INTO lessons (id, tutor_id, student_id, status, started_at, ended_at, duration_seconds) VALUES (${lessonId}, ${DEMO_TUTOR_ID}, ${resolvedStudentId}, 'processing', NOW(), NOW(), ${durationSeconds || 0})`);
+    if (!staged) {
+      await q(sql, sql`INSERT INTO lessons (id, tutor_id, student_id, status, started_at, ended_at, duration_seconds) VALUES (${lessonId}, ${DEMO_TUTOR_ID}, ${resolvedStudentId}, 'processing', NOW(), NOW(), ${durationSeconds || 0})`);
+    }
 
     let allText = '';
     let allSegments: any[] = [];
 
-    if (hasMic || hasSystem) {
+    if (staged) {
+      // Сегменты уже транскрибированы при загрузке через /api/lesson-audio
+      const rows = await q(sql, sql`SELECT track, segments FROM lesson_audio_segments WHERE lesson_id = ${lessonId} ORDER BY track, idx`);
+      if (!rows.length) {
+        await q(sql, sql`UPDATE lessons SET status = 'failed' WHERE id = ${lessonId}`);
+        return NextResponse.json({ error: 'No uploaded audio for this lesson', lessonId }, { status: 400 });
+      }
+
+      const micSegs = rows.filter((r: any) => r.track === 'mic').flatMap((r: any) => r.segments || []);
+      const sysSegs = rows.filter((r: any) => r.track === 'system').flatMap((r: any) => r.segments || []);
+      const mixedSegs = rows.filter((r: any) => r.track === 'mixed').flatMap((r: any) => r.segments || []);
+      stagedHasMic = micSegs.length > 0;
+      stagedHasSystem = sysSegs.length > 0;
+
+      if (mixedSegs.length && !stagedHasMic && !stagedHasSystem) {
+        // Dev-загрузка файла: один смешанный трек, ролей в аудио нет —
+        // спикеров разберёт ИИ (trackInfo = Mixed)
+        allSegments = mixedSegs
+          .slice()
+          .sort((a: any, b: any) => a.start - b.start)
+          .map((s: any) => ({ ...s, speaker: 'UNKNOWN' }));
+        allText = allSegments.map((s: any) => s.text).join(' ').trim();
+      } else {
+        const applySwap = swapTracks && stagedHasMic && stagedHasSystem;
+        const teacherSegs = applySwap ? sysSegs : micSegs;
+        const studentSegs = applySwap ? micSegs : sysSegs;
+
+        const { merged, fullText } = mergeTranscripts(teacherSegs, studentSegs);
+        allSegments = merged;
+        allText = fullText;
+      }
+
+    } else if (hasMic || hasSystem) {
       // DUAL TRACK MODE: transcribe separately, then merge
       let teacherSegments: any[] = [];
       let studentSegments: any[] = [];
 
       if (hasMic) {
-        console.log(`Transcribing mic (teacher): ${micBase64List.length} chunk(s)...`);
+        console.log(`Transcribing mic (${swapTracks ? 'student' : 'teacher'}): ${micBase64List.length} chunk(s)...`);
         // Concatenate all mic chunks into one transcribe call if small enough
         // or transcribe each separately
         for (let i = 0; i < micBase64List.length; i++) {
-          const micResult = await transcribeAudio(micBase64List[i], `teacher_mic_${i}`);
+          const micResult = await transcribeAudio(micBase64List[i], `${swapTracks ? 'student' : 'teacher'}_mic_${i}`);
           const offset = i * 300; // rough offset per chunk
           teacherSegments.push(...micResult.segments.map((s) => ({ ...s, start: s.start + offset, end: s.end + offset })));
           console.log(`Mic chunk ${i}: ${micResult.segments.length} segments`);
@@ -131,9 +198,9 @@ export async function POST(req: NextRequest) {
       }
 
       if (hasSystem) {
-        console.log(`Transcribing system (student): ${systemBase64List.length} chunk(s)...`);
+        console.log(`Transcribing system (${swapTracks ? 'teacher' : 'student'}): ${systemBase64List.length} chunk(s)...`);
         for (let i = 0; i < systemBase64List.length; i++) {
-          const sysResult = await transcribeAudio(systemBase64List[i], `student_system_${i}`);
+          const sysResult = await transcribeAudio(systemBase64List[i], `${swapTracks ? 'teacher' : 'student'}_system_${i}`);
           const offset = i * 300;
           studentSegments.push(...sysResult.segments.map((s) => ({ ...s, start: s.start + offset, end: s.end + offset })));
           console.log(`System chunk ${i}: ${sysResult.segments.length} segments`);
@@ -171,10 +238,23 @@ export async function POST(req: NextRequest) {
       return `${time} ${s.text}`;
     }).join('\n');
 
+    const studentRows = await q(sql, sql`SELECT name, level, goals FROM students WHERE id = ${resolvedStudentId} LIMIT 1`);
+    const profile = studentRows[0] || {};
+    const profileName = profile.name || studentName || 'Student';
+    const profileLevel = profile.level || studentLevel || 'unknown (assess from transcript)';
+    const profileGoals = profile.goals || studentGoals || 'General English improvement';
+
+    const materialRows = await q(sql, sql`SELECT filename, category, content FROM materials WHERE tutor_id = ${DEMO_TUTOR_ID} ORDER BY created_at DESC`);
+    const materialsText = materialsToPromptText(pickMaterials(materialRows as any, profileGoals, false));
+
     let trackInfo: string;
-    if (hasMic && hasSystem) {
-      trackInfo = `Audio sources: TWO TRACKS — Microphone = TEACHER, System audio = STUDENT. Speaker labels are already correct from the recording hardware.`;
-    } else if (hasSystem && !hasMic) {
+    const realHasMic = staged ? stagedHasMic : hasMic;
+    const realHasSystem = staged ? stagedHasSystem : hasSystem;
+    if (realHasMic && realHasSystem) {
+      trackInfo = swapTracks
+        ? `Audio sources: TWO TRACKS (Reverb mode) — Microphone = STUDENT, System audio = TEACHER. Speaker labels are already correct from the recording hardware.`
+        : `Audio sources: TWO TRACKS — Microphone = TEACHER, System audio = STUDENT. Speaker labels are already correct from the recording hardware.`;
+    } else if (realHasSystem && !realHasMic) {
       trackInfo = `Audio source: SYSTEM AUDIO ONLY (no microphone). This recording captures what plays through the student's speakers/headphones — the teacher's voice from the video call (Zoom/Meet/etc.) and any exercise audio.
 
 HOW TO IDENTIFY SPEAKERS:
@@ -198,41 +278,15 @@ LABEL: Use TEACHER: and STUDENT: prefixes on each line. If you truly cannot dete
       trackInfo = `Audio source: Mixed (single track). Please identify TEACHER vs STUDENT from context.`;
     }
 
-    const analysisPrompt = `You are an experienced English language tutor and lesson analyst. A ${Math.round((durationSeconds || 0) / 60)}-minute lesson has just been recorded.
-
-## Student Profile
-- Name: ${studentName || 'Student'}
-- Level: ${studentLevel || 'unknown (assess from transcript)'}
-- Goals: ${studentGoals || 'General English improvement'}
-
-## Audio Sources
-${trackInfo}
-
-## Transcript
-${segmentLines}
-
-## Your Task
-Analyze this lesson as if you were the tutor's mentor reviewing their teaching. Consider:
-1. The student's proficiency level and whether they're progressing
-2. What teaching methods were used and how effective they were
-3. Specific moments where the student struggled or excelled
-4. Whether the lesson aligned with the student's goals
-
-## Output (JSON only, no markdown):
-{
-  "teacher_student_transcript": "Full clean conversation with TEACHER: and STUDENT: labels on each line. Fix any transcription errors, complete any cut-off sentences. Keep the original language of the conversation.",
-  "summary": "Detailed 3-5 sentence summary covering what was taught, how, and student's response",
-  "topics": ["specific topics covered with subtopics"],
-  "strengths": ["specific things student did well with examples from transcript"],
-  "weaknesses": ["specific areas of struggle with examples"],
-  "key_vocabulary": ["new words/expressions taught or used"],
-  "grammar_focus": ["grammar points practiced or explained"],
-  "recurring_issues": ["patterns you notice from the teaching approach"],
-  "next_lesson_recommendation": "Specific plan for next lesson based on this session",
-  "student_level_assessment": "Your assessment: A1/A2/B1/B2/C1/C2 with justification",
-  "engagement_score": 85,
-  "teaching_quality_notes": "Brief notes on tutor performance: pacing, clarity, rapport"
-}`;
+    const analysisPrompt = buildAnalysisPrompt({
+      durationMinutes: Math.round(effectiveDuration / 60),
+      studentName: profileName,
+      studentLevel: profileLevel,
+      studentGoals: profileGoals,
+      trackInfo,
+      segmentLines,
+      materialsText: materialsText || undefined,
+    });
 
     const analysisRes = await fetch('https://polza.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -240,11 +294,11 @@ Analyze this lesson as if you were the tutor's mentor reviewing their teaching. 
       body: JSON.stringify({
         model: 'openai/gpt-4o',
         messages: [
-          { role: 'system', content: `You are an expert English tutoring analyst with deep knowledge of CEFR levels (A1-C2), communicative language teaching, and second language acquisition. You provide constructive, specific feedback that helps both tutor and student improve. Always respond with valid JSON only.` },
+          { role: 'system', content: ANALYSIS_SYSTEM_PROMPT },
           { role: 'user', content: analysisPrompt },
         ],
         temperature: 0.3,
-        max_tokens: 4000,
+        max_tokens: 8000,
       }),
     });
 
@@ -258,12 +312,13 @@ Analyze this lesson as if you were the tutor's mentor reviewing their teaching. 
         analysis = { summary: analysisData.choices[0]?.message?.content || 'Analysis failed' };
       }
     } else {
-      console.error('AI analysis failed:', analysisRes.status);
+      const errText = await analysisRes.text().catch(() => '');
+      console.error('AI analysis failed:', analysisRes.status, analysisRes.status === 402 ? '(Polza balance exhausted — top up)' : '', errText.slice(0, 200));
     }
 
     // 4. Save analysis
     const analysisId = crypto.randomUUID();
-    await q(sql, sql`INSERT INTO lesson_analyses (id, lesson_id, summary, topics, strengths, weaknesses, recurring_weaknesses, recommended_practice, next_lesson_recommendation, raw_ai_response) VALUES (${analysisId}, ${lessonId}, ${analysis.summary || ''}, ${JSON.stringify(analysis.topics || [])}::jsonb, ${JSON.stringify(analysis.strengths || [])}::jsonb, ${JSON.stringify(analysis.weaknesses || [])}::jsonb, ${JSON.stringify(analysis.recurring_issues || [])}::jsonb, ${JSON.stringify(analysis.next_lesson_recommendation ? [analysis.next_lesson_recommendation] : [])}::jsonb, ${analysis.next_lesson_recommendation || ''}, ${JSON.stringify(analysis)}::jsonb)`);
+    await q(sql, sql`INSERT INTO lesson_analyses (id, lesson_id, summary, topics, strengths, weaknesses, recurring_weaknesses, recommended_practice, next_lesson_recommendation, raw_ai_response, engagement_score, key_vocabulary, grammar_focus, student_level_assessment) VALUES (${analysisId}, ${lessonId}, ${analysis.summary || ''}, ${JSON.stringify(analysis.topics || [])}::jsonb, ${JSON.stringify(analysis.strengths || [])}::jsonb, ${JSON.stringify(analysis.weaknesses || [])}::jsonb, ${JSON.stringify(analysis.recurring_issues || [])}::jsonb, ${JSON.stringify(analysis.next_lesson_recommendation ? [analysis.next_lesson_recommendation] : [])}::jsonb, ${analysis.next_lesson_recommendation || ''}, ${JSON.stringify(analysis)}::jsonb, ${Number(analysis.engagement_score) || 0}, ${JSON.stringify(analysis.key_vocabulary || [])}::jsonb, ${JSON.stringify(analysis.grammar_focus || [])}::jsonb, ${JSON.stringify(analysis.student_level_assessment || null)}::jsonb)`);
 
     // 5. Pre-generate homework
     const homeworkQuestions = analysis.homework || [];
@@ -272,9 +327,18 @@ Analyze this lesson as if you were the tutor's mentor reviewing their teaching. 
       const hwTitle = `Homework: ${(analysis.topics || []).join(', ') || 'Lesson Review'}`;
       await q(sql, sql`INSERT INTO homeworks (id, lesson_id, student_id, tutor_id, title, status) VALUES (${homeworkId}, ${lessonId}, ${resolvedStudentId}, ${DEMO_TUTOR_ID}, ${hwTitle}, 'draft')`);
 
-      for (let i = 0; i < homeworkQuestions.length; i++) {
-        const qQ = homeworkQuestions[i];
-        await q(sql, sql`INSERT INTO homework_questions (id, homework_id, type, question_text, options, correct_answer, explanation, sort_order) VALUES (${crypto.randomUUID()}, ${homeworkId}, ${qQ.type || 'multiple_choice'}, ${qQ.question || ''}, ${JSON.stringify(qQ.options || [])}::jsonb, ${qQ.correct_answer || ''}, ${qQ.explanation || ''}, ${i})`);
+      try {
+        for (let i = 0; i < homeworkQuestions.length; i++) {
+          const qQ = homeworkQuestions[i];
+          const type = normalizeQuestionType(qQ.type, qQ.options);
+          const { text, correctAnswer } = scrubHomeworkQuestion(qQ.question || '', qQ.correct_answer || '');
+          const opts = normalizeHomeworkOptions(qQ.options, text);
+          await q(sql, sql`INSERT INTO homework_questions (id, homework_id, type, question_text, options, correct_answer, explanation, sort_order) VALUES (${crypto.randomUUID()}, ${homeworkId}, ${type}, ${text}, ${JSON.stringify(opts)}::jsonb, ${correctAnswer}, ${qQ.explanation || ''}, ${i})`);
+        }
+      } catch (e: any) {
+        console.error('Homework pre-generation failed:', e);
+        await q(sql, sql`DELETE FROM homework_questions WHERE homework_id = ${homeworkId}`);
+        await q(sql, sql`DELETE FROM homeworks WHERE id = ${homeworkId}`);
       }
     }
 
@@ -285,7 +349,7 @@ Analyze this lesson as if you were the tutor's mentor reviewing their teaching. 
       lessonId,
       transcript: allText,
       segments: allSegments,
-      dualTrack: hasMic || hasSystem,
+      dualTrack: realHasMic || realHasSystem,
       analysis: {
         teacher_student_transcript: analysis.teacher_student_transcript,
         summary: analysis.summary,

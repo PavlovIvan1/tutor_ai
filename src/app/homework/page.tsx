@@ -3,29 +3,8 @@
 import { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import EmptyState from '@/components/ui/EmptyState';
-import Paywall from '@/components/ui/Paywall';
-import { mockStore } from '@/lib/mock-store';
 
 export default function HomeworkPage() {
-  const [hasSubscription, setHasSubscription] = useState(false);
-
-  useEffect(() => {
-    const { data } = mockStore.subscription.get();
-    setHasSubscription(data?.plan != null);
-  }, []);
-
-  if (!hasSubscription) {
-    return (
-      <DashboardLayout>
-        <div className="mb-8">
-          <h1 className="text-3xl font-black text-ink">Homework</h1>
-          <p className="text-ink-secondary mt-1">Manage and track student homework assignments.</p>
-        </div>
-        <Paywall />
-      </DashboardLayout>
-    );
-  }
-
   return (
     <DashboardLayout>
       <div className="mb-8">

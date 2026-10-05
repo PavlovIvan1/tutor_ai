@@ -118,3 +118,62 @@ export function calculateStudentSkills(level: string, analysis: any): StudentSki
     interaction: adjust(base, fluencyWeak, Math.min(strengths.length, 2)),
   };
 }
+
+/**
+ * Считает прогресс навыков строго на основе AI-анализов уроков
+ * (strengths / weaknesses / engagement_score), без опоры на уровень.
+ * Возвращает null, если аналитики ещё нет.
+ */
+export function calculateSkillsFromAI(analyses: any[]): StudentSkills | null {
+  const valid = (analyses || []).filter(
+    (a) =>
+      a &&
+      (((a.strengths || []).length > 0) ||
+        ((a.weaknesses || []).length > 0) ||
+        (Number(a.engagement_score) > 0 && Number(a.engagement_score) <= 100))
+  );
+  if (valid.length === 0) return null;
+
+  const strengths: string[] = valid.flatMap((a) => a.strengths || []);
+  const weaknesses: string[] = valid.flatMap((a) => a.weaknesses || []);
+  const engagements = valid
+    .map((a) => Number(a.engagement_score))
+    .filter((n) => !Number.isNaN(n) && n > 0 && n <= 100);
+
+  const base = engagements.length
+    ? Math.round(engagements.reduce((s, n) => s + n, 0) / engagements.length)
+    : 60;
+
+  const count = (list: string[], keywords: string[]) =>
+    list.filter((item) => keywords.some((kw) => item.toLowerCase().includes(kw))).length;
+
+  const adjust = (weak: number, strong: number) =>
+    Math.max(5, Math.min(100, base - weak * 7 + strong * 6));
+
+  const fluency = adjust(
+    count(weaknesses, ['fluency', 'hesitat', 'paus', 'confidence', 'pace', 'smooth', 'беглост', 'уверенност', 'заминк', 'темп', 'плавно', 'связно', 'с трудом отвечает']),
+    count(strengths, ['fluency', 'speaking', 'confidence', 'smooth', 'expressing', 'беглост', 'уверенност', 'плавно', 'связно', 'свободно говорит'])
+  );
+  const grammar = adjust(
+    count(weaknesses, ['grammar', 'tense', 'verb', 'article', 'preposition', 'structure', 'sentence', 'agreement', 'грамматик', 'времён', 'артикль', 'глагол', 'предложен', 'согласован', 'склонен']),
+    count(strengths, ['grammar', 'tense', 'structure', 'sentence', 'грамматик', 'времён', 'предложен', 'правильно образует'])
+  );
+  const vocabulary = adjust(
+    count(weaknesses, ['vocabulary', 'lexical', 'word choice', 'phrase', 'terminology', 'словар', 'лексик', 'подбор слов', 'не знает слов', 'неподходящ']),
+    count(strengths, ['vocabulary', 'lexical', 'expression', 'phras', 'словар', 'лексик', 'выражен', 'использует слова'])
+  );
+  const pronunciation = adjust(
+    count(weaknesses, ['pronunciation', 'accent', 'intonation', 'articulat', 'sound', 'произношен', 'акцент', 'интонац', 'озвуч']),
+    count(strengths, ['pronunciation', 'accent', 'intonation', 'articulat', 'произношен', 'акцент', 'интонац'])
+  );
+  const comprehension = adjust(
+    count(weaknesses, ['comprehend', 'understand', 'listening', 'misread', 'ignored', 'пониман', 'не понял', 'не уловил', 'непониман']),
+    count(strengths, ['comprehend', 'understanding', 'listening', 'пониман', 'улавливает', 'понял суть'])
+  );
+  const interaction = adjust(
+    count(weaknesses, ['interaction', 'initiat', 'respond', 'conversation', 'passive', 'вовлеч', 'инициатив', 'пассивн', 'не отвечает', 'диалог']),
+    count(strengths, ['interaction', 'initiat', 'respond', 'conversation', 'engage', 'follow-up', 'вовлеч', 'инициатив', 'ведёт диалог', 'отвечает'])
+  );
+
+  return { fluency, grammar, vocabulary, pronunciation, comprehension, interaction };
+}

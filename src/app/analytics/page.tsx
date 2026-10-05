@@ -3,20 +3,13 @@
 import { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Card from '@/components/ui/Card';
-import Paywall from '@/components/ui/Paywall';
 import SkillBars from '@/components/ui/SkillBars';
-import { mockStore } from '@/lib/mock-store';
 import { getAvatarUrl, formatDuration } from '@/lib/utils';
 
 export default function AnalyticsPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [hasSubscription, setHasSubscription] = useState(false);
-
   useEffect(() => {
-    const { data: sub } = mockStore.subscription.get();
-    setHasSubscription(sub?.plan != null);
-
     async function load() {
       try {
         const res = await fetch('/api/stats');
@@ -31,18 +24,6 @@ export default function AnalyticsPage() {
   }, []);
 
   if (loading) return <DashboardLayout><div className="text-center py-12 text-ink-secondary">Loading...</div></DashboardLayout>;
-
-  if (!hasSubscription) {
-    return (
-      <DashboardLayout>
-        <div className="mb-8">
-          <h1 className="text-3xl font-black text-ink">Analytics</h1>
-          <p className="text-ink-secondary mt-1">Track your teaching performance and student progress.</p>
-        </div>
-        <Paywall />
-      </DashboardLayout>
-    );
-  }
 
   if (!data) return <DashboardLayout><div className="text-center py-12 text-ink-secondary">No data</div></DashboardLayout>;
 
@@ -127,7 +108,7 @@ export default function AnalyticsPage() {
                     <p className="text-xs text-ink-secondary">{s.level} · {s.lessonCount} lessons</p>
                   </div>
                 </div>
-                <SkillBars level={s.level} analysis={s.lastLesson} compact />
+                <SkillBars lessons={s.analyses || (s.lastLesson ? [s.lastLesson] : [])} compact />
               </div>
             ))}
           </div>

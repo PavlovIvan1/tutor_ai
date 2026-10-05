@@ -3,33 +3,11 @@
 import { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Card from '@/components/ui/Card';
-import Paywall from '@/components/ui/Paywall';
-import { mockStore } from '@/lib/mock-store';
 
 export default function NotesPage() {
   const [notes, setNotes] = useState<any[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [hasSubscription, setHasSubscription] = useState(false);
   const selected = notes.find((n) => n.id === selectedId);
-
-  useEffect(() => {
-    const { data } = mockStore.subscription.get();
-    setHasSubscription(data?.plan != null);
-  }, []);
-
-  if (!hasSubscription) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-black text-ink">Notes</h1>
-            <p className="text-ink-secondary mt-1">Quick notes about your students and lessons.</p>
-          </div>
-        </div>
-        <Paywall />
-      </DashboardLayout>
-    );
-  }
 
   return (
     <DashboardLayout>

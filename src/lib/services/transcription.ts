@@ -10,7 +10,7 @@ export interface TranscriptionResult {
 const POLZA_BASE = 'https://polza.ai/api/v1';
 const POLZA_KEY = process.env.OPENAI_API_KEY || '';
 
-export async function transcribeBase64(base64: string, language = 'en'): Promise<TranscriptionResult> {
+export async function transcribeBase64(base64: string, language: string | null = 'en'): Promise<TranscriptionResult> {
   if (!POLZA_KEY) throw new Error('OPENAI_API_KEY not set');
 
   const dataUri = base64.startsWith('data:') ? base64 : `data:audio/webm;base64,${base64}`;
@@ -24,7 +24,8 @@ export async function transcribeBase64(base64: string, language = 'en'): Promise
     body: JSON.stringify({
       model: 'openai/whisper-1',
       file: dataUri,
-      language,
+      // language = null → Whisper сам определяет язык
+      ...(language ? { language } : {}),
       response_format: 'verbose_json',
     }),
   });

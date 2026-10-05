@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, BorderStyle } from 'docx';
 import { getDb, isDbConfigured, q } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   if (!isDbConfigured()) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
 
@@ -44,54 +46,66 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       spacing: { after: 300 },
     }));
 
-    for (let i = 0; i < questionRows.length; i++) {
-      const qQ = questionRows[i];
-      let questionText = '';
-
-      if (qQ.type === 'multiple_choice') {
-        const options = typeof qQ.options === 'string' ? JSON.parse(qQ.options) : qQ.options || [];
-        questionText = `${i + 1}. ${qQ.question_text}\n`;
-        options.forEach((opt: string, idx: number) => {
-          questionText += `    ${String.fromCharCode(65 + idx)}) ${opt}\n`;
-        });
-      } else {
-        questionText = `${i + 1}. ${qQ.question_text}`;
-      }
-
+    const theory = typeof homework.theory === 'string' ? JSON.parse(homework.theory || 'null') : homework.theory;
+    if (theory && (theory.explanation || theory.topic)) {
       docSections.push(new Paragraph({
-        children: [new TextRun({ text: questionText, size: 22, font: 'Arial' })],
-        spacing: { after: 300 },
+        children: [new TextRun({ text: 'Theory', bold: true, size: 28, font: 'Arial' })],
+        heading: HeadingLevel.HEADING_2,
+        spacing: { before: 200, after: 150 },
+      }));
+      if (theory.topic) {
+        docSections.push(new Paragraph({
+          children: [new TextRun({ text: theory.topic, bold: true, size: 24, font: 'Arial' })],
+          spacing: { after: 100 },
+        }));
+      }
+      if (theory.explanation) {
+        docSections.push(new Paragraph({
+          children: [new TextRun({ text: theory.explanation, size: 22, font: 'Arial' })],
+          spacing: { after: 150 },
+        }));
+      }
+      (theory.examples || []).forEach((ex: string) => {
+        docSections.push(new Paragraph({
+          children: [new TextRun({ text: `- ${ex}`, size: 22, font: 'Arial' })],
+          spacing: { after: 60 },
+        }));
+      });
+      docSections.push(new Paragraph({
+        children: [new TextRun({ text: '', size: 22, font: 'Arial' })],
+        spacing: { after: 200 },
       }));
     }
 
-    docSections.push(new Paragraph({
-      children: [new TextRun({ text: '', size: 22, font: 'Arial' })],
-      spacing: { after: 200 },
-    }));
-
-    docSections.push(new Paragraph({
-      children: [new TextRun({ text: 'Answer Key', bold: true, size: 28, font: 'Arial' })],
-      heading: HeadingLevel.HEADING_2,
-      spacing: { after: 200 },
-    }));
-
-    docSections.push(new Paragraph({
-      border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' } },
-      spacing: { after: 200 },
-    }));
-
     for (let i = 0; i < questionRows.length; i++) {
       const qQ = questionRows[i];
-      docSections.push(new Paragraph({
-        children: [new TextRun({ text: `${i + 1}. ${qQ.correct_answer}`, size: 22, font: 'Arial', bold: true })],
-        spacing: { after: 100 },
-      }));
-      if (qQ.explanation) {
-        docSections.push(new Paragraph({
-          children: [new TextRun({ text: `    ${qQ.explanation}`, size: 20, font: 'Arial', italics: true, color: '666666' })],
-          spacing: { after: 200 },
-        }));
+      const firstLine = String(qQ.question_text || '').split('\n')[0];
+      const alreadyNumbered = /^\s*\d{1,2}\s*[.)]/.test(firstLine);
+      const body = alreadyNumbered ? String(qQ.question_text || '') : `${i + 1}. ${qQ.question_text}`;
+      let questionLines: string[];
+
+      if (qQ.type === 'multiple_choice') {
+        const options = typeof qQ.options === 'string' ? JSON.parse(qQ.options) : qQ.options || [];
+        questionLines = [body];
+        options.forEach((opt: string, idx: number) => {
+          questionLines.push(`    ${String.fromCharCode(65 + idx)}) ${opt}`);
+        });
+      } else {
+        questionLines = [body];
       }
+
+      const runs: TextRun[] = [];
+      questionLines.forEach((line) => {
+        const parts = line.split('\n');
+        parts.forEach((part, pi) => {
+          runs.push(new TextRun({ text: part, size: 22, font: 'Arial', ...(pi > 0 || runs.length ? { break: 1 } : {}) }));
+        });
+      });
+
+      docSections.push(new Paragraph({
+        children: runs,
+        spacing: { after: 300 },
+      }));
     }
 
     const doc = new Document({ sections: [{ children: docSections }] });

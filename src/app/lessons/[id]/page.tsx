@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import HomeworkOptionsModal from '@/components/homework/HomeworkOptionsModal';
 import { getDb, isDbConfigured } from '@/lib/db';
 
 interface LessonDetail {
@@ -23,6 +24,8 @@ export default function LessonDetailPage() {
   const [data, setData] = useState<LessonDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [generatingHomework, setGeneratingHomework] = useState(false);
+  const [hwModalOpen, setHwModalOpen] = useState(false);
+  const [hwError, setHwError] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -41,20 +44,26 @@ export default function LessonDetailPage() {
     load();
   }, [lessonId]);
 
-  const generateHomework = async () => {
+  const generateHomework = async (options?: any) => {
     setGeneratingHomework(true);
+    setHwError('');
     try {
       const res = await fetch('/api/homework/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lessonId }),
+        body: JSON.stringify({ lessonId, options }),
       });
       if (res.ok) {
         const result = await res.json();
         setData(prev => prev ? { ...prev, homework: result.homework } : prev);
+        setHwModalOpen(false);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setHwError(err.error || 'Не удалось сгенерировать домашку');
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to generate homework:', e);
+      setHwError('Ошибка сети при генерации');
     } finally {
       setGeneratingHomework(false);
     }
@@ -224,17 +233,40 @@ export default function LessonDetailPage() {
         {/* Next Lesson Recommendation */}
         {nextRec && (
           <Card className="p-5 mb-6">
-            <h3 className="text-sm font-bold text-ink-muted uppercase tracking-wider mb-3">Рекомендация на следующий урок</h3>
-            <p className="text-sm text-ink">{nextRec}</p>
+            <h3 className="text-sm font-bold text-ink-muted uppercase tracking-wider mb-3">План и рекомендация на следующий урок</h3>
+            <p className="text-sm text-ink whitespace-pre-line leading-relaxed">{nextRec}</p>
           </Card>
         )}
 
         {/* Homework Section */}
         <Card className="p-6 mb-6">
           <h3 className="text-sm font-bold text-ink-muted uppercase tracking-wider mb-3">Домашнее задание</h3>
+          {hwError && (
+            <div className="mb-3 p-3 rounded-xl bg-red-50 text-coral text-sm font-semibold">{hwError}</div>
+          )}
           {data.homework ? (
             <div>
               <p className="text-sm text-ink-secondary mb-3">{data.homework.title}</p>
+              {data.homework.theory && (data.homework.theory.explanation || data.homework.theory.topic) && (
+                <div className="mb-4 rounded-2xl bg-brand/5 border border-brand/20 p-4">
+                  <p className="text-xs font-black text-brand uppercase tracking-wider mb-1">Теория</p>
+                  {data.homework.theory.topic && (
+                    <p className="text-sm font-bold text-ink mb-1">{data.homework.theory.topic}</p>
+                  )}
+                  {data.homework.theory.explanation && (
+                    <p className="text-sm text-ink-secondary leading-relaxed whitespace-pre-line">
+                      {data.homework.theory.explanation}
+                    </p>
+                  )}
+                  {(data.homework.theory.examples || []).length > 0 && (
+                    <ul className="mt-2 space-y-1">
+                      {data.homework.theory.examples.map((ex: string, i: number) => (
+                        <li key={i} className="text-xs text-ink-secondary">• {ex}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
               <Button onClick={downloadHomework} size="sm">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -247,7 +279,7 @@ export default function LessonDetailPage() {
           ) : (
             <div>
               <p className="text-sm text-ink-secondary mb-3">Домашнее задание ещё не сгенерировано.</p>
-              <Button onClick={generateHomework} disabled={generatingHomework} size="sm">
+              <Button onClick={() => setHwModalOpen(true)} disabled={generatingHomework} size="sm">
                 {generatingHomework ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
@@ -265,6 +297,14 @@ export default function LessonDetailPage() {
             </div>
           )}
         </Card>
+
+        <HomeworkOptionsModal
+          open={hwModalOpen}
+          onClose={() => !generatingHomework && setHwModalOpen(false)}
+          onConfirm={generateHomework}
+          loading={generatingHomework}
+          studentName={data.student?.name}
+        />
       </div>
     </DashboardLayout>
   );

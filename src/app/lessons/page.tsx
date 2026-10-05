@@ -8,7 +8,7 @@ import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Paywall from '@/components/ui/Paywall';
 import { createClient } from '@/lib/supabase/client';
-import { mockStore } from '@/lib/mock-store';
+import { mockStore, lessonsLeft } from '@/lib/mock-store';
 import { getInitials, getLevelColor } from '@/lib/utils';
 
 interface LessonWithDetails {
@@ -27,14 +27,14 @@ interface LessonWithDetails {
 export default function LessonsPage() {
   const [lessons, setLessons] = useState<LessonWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hasSubscription, setHasSubscription] = useState(false);
+  const [leftLessons, setLeftLessons] = useState(1);
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
   if (!supabaseRef.current) supabaseRef.current = createClient();
   const supabase = supabaseRef.current;
 
   useEffect(() => {
     const { data } = mockStore.subscription.get();
-    setHasSubscription(data?.plan != null);
+    setLeftLessons(lessonsLeft(data));
     async function load() {
       const res = await fetch('/api/lessons');
       if (res.ok) {
@@ -54,22 +54,28 @@ export default function LessonsPage() {
             <h1 className="text-3xl font-black text-ink">Уроки</h1>
             <p className="text-ink-secondary mt-1">Все ваши записанные уроки с анализом.</p>
           </div>
-          {hasSubscription && (
-            <Link href="/lessons/new">
-              <Button>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" />
-                </svg>
-                Новый урок
-              </Button>
-            </Link>
-          )}
+          <Link href="/lessons/new">
+            <Button>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" />
+              </svg>
+              Новый урок
+            </Button>
+          </Link>
         </div>
 
-        {!hasSubscription ? (
-          <Paywall />
-        ) : loading ? (
+        {leftLessons <= 0 && (
+          <Card className="p-4 mb-6">
+            <Paywall
+              title="Лимит уроков исчерпан"
+              description="Лимит уроков на этот месяц исчерпан. Оформите или продлите подписку — 4, 12 или 30 уроков в месяц."
+              cta="Выбрать тариф"
+            />
+          </Card>
+        )}
+
+        {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-3 border-brand border-t-transparent rounded-full animate-spin" />
           </div>
@@ -88,7 +94,7 @@ export default function LessonsPage() {
             </Link>
           </Card>
         ) : (
-          <div className="space-y-3">
+          <div className="flex flex-col gap-4">
             {lessons.map((lesson) => {
               const topics = typeof lesson.analysis_topics === 'string'
                 ? JSON.parse(lesson.analysis_topics || '[]')

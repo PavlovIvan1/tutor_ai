@@ -18,34 +18,12 @@ const levelOptions = [
   { value: 'C2', label: 'C2 - Proficient' },
 ];
 
-const dayOptions = [
-  { value: 'Понедельник', label: 'Понедельник' },
-  { value: 'Вторник', label: 'Вторник' },
-  { value: 'Среда', label: 'Среда' },
-  { value: 'Четверг', label: 'Четверг' },
-  { value: 'Пятница', label: 'Пятница' },
-  { value: 'Суббота', label: 'Суббота' },
-  { value: 'Воскресенье', label: 'Воскресенье' },
-];
-
-const durationOptions = [
-  { value: '30', label: '30 минут' },
-  { value: '45', label: '45 минут' },
-  { value: '60', label: '60 минут' },
-  { value: '90', label: '90 минут' },
-  { value: '120', label: '120 минут' },
-];
-
 export default function NewStudentPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [level, setLevel] = useState('B1');
   const [goals, setGoals] = useState('');
   const [notes, setNotes] = useState('');
-  const [lessonDay, setLessonDay] = useState('');
-  const [lessonTime, setLessonTime] = useState('');
-  const [lessonDuration, setLessonDuration] = useState('60');
-  const [price, setPrice] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
@@ -59,7 +37,7 @@ export default function NewStudentPage() {
       const res = await fetch('/api/students', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, level, goals, notes, lesson_day: lessonDay, lesson_time: lessonTime, lesson_duration: lessonDuration ? parseInt(lessonDuration) : null, price_per_lesson: price ? parseInt(price) : null }),
+        body: JSON.stringify({ name, email, level, goals, notes }),
       });
 
       if (!res.ok) {
@@ -81,7 +59,7 @@ export default function NewStudentPage() {
       <div className="max-w-2xl">
         <div className="mb-8">
           <h1 className="text-3xl font-black text-ink">Добавить ученика</h1>
-          <p className="text-ink-secondary mt-1">Заполните данные ученика и расписание занятий.</p>
+          <p className="text-ink-secondary mt-1">Заполните данные ученика.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -125,40 +103,6 @@ export default function NewStudentPage() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
-              />
-            </div>
-          </Card>
-
-          <Card className="p-8">
-            <h2 className="text-lg font-bold text-ink mb-4">Расписание и оплата</h2>
-            <div className="space-y-5">
-              <Select
-                label="День занятия"
-                options={[{ value: '', label: 'Не выбран' }, ...dayOptions]}
-                value={lessonDay}
-                onChange={(e) => setLessonDay(e.target.value)}
-              />
-
-              <Input
-                label="Время занятия"
-                type="time"
-                value={lessonTime}
-                onChange={(e) => setLessonTime(e.target.value)}
-              />
-
-              <Select
-                label="Длительность урока"
-                options={durationOptions}
-                value={lessonDuration}
-                onChange={(e) => setLessonDuration(e.target.value)}
-              />
-
-              <Input
-                label="Стоимость урока (₽)"
-                type="number"
-                placeholder="2000"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
               />
             </div>
           </Card>

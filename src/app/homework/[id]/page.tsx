@@ -47,8 +47,11 @@ export default function PublicHomeworkPage() {
 
     let correctCount = 0;
     const answerData = questions.map((q) => {
-      const userAnswer = answers[q.id] || '';
-      const isCorrect = userAnswer.toLowerCase().trim() === q.correct_answer.toLowerCase().trim();
+      const userAnswer = (answers[q.id] || '').trim();
+      const isOpen = q.type === 'short_answer' || q.type === 'writing';
+      const isCorrect = isOpen
+        ? userAnswer.length > 0
+        : userAnswer.toLowerCase() === (q.correct_answer || '').toLowerCase().trim();
       if (isCorrect) correctCount++;
       return {
         question_id: q.id,
@@ -135,12 +138,31 @@ export default function PublicHomeworkPage() {
           </p>
         </div>
 
+        {homework.theory && (homework.theory.explanation || homework.theory.topic) && (
+          <div className="mb-6 bg-white rounded-3xl border border-brand/20 bg-brand/5 shadow-card p-6">
+            <p className="text-xs font-bold text-brand uppercase mb-2">Theory</p>
+            {homework.theory.topic && <p className="text-ink font-black mb-2">{homework.theory.topic}</p>}
+            {homework.theory.explanation && (
+              <p className="text-ink-secondary text-sm leading-relaxed whitespace-pre-line">
+                {homework.theory.explanation}
+              </p>
+            )}
+            {((homework.theory?.examples || []).length) > 0 && (
+              <ul className="mt-3 space-y-1">
+                {(homework.theory?.examples || []).map((ex: string, i: number) => (
+                  <li key={i} className="text-sm text-ink-secondary">• {ex}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
         {/* Questions */}
         <div className="space-y-4">
           {questions.map((q, i) => (
             <div key={q.id} className="bg-white rounded-3xl border border-surface-border shadow-card p-6">
               <p className="text-xs font-bold text-ink-muted uppercase mb-2">Question {i + 1}</p>
-              <p className="text-ink font-semibold mb-4">{q.question_text}</p>
+              <p className="text-ink font-semibold mb-4 whitespace-pre-line break-words">{q.question_text}</p>
 
               {q.type === 'multiple_choice' && q.options && (
                 <div className="space-y-2">
@@ -160,7 +182,15 @@ export default function PublicHomeworkPage() {
                 </div>
               )}
 
-              {(q.type === 'fill_blank' || q.type === 'short_answer') && (
+              {q.type === 'writing' ? (
+                <textarea
+                  value={answers[q.id] || ''}
+                  onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
+                  rows={5}
+                  placeholder="Write your answer..."
+                  className="w-full px-4 py-3 rounded-xl border border-surface-border bg-surface text-ink font-semibold placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-all text-sm resize-none"
+                />
+              ) : (q.type === 'fill_blank' || q.type === 'short_answer') && (
                 <input
                   type="text"
                   value={answers[q.id] || ''}

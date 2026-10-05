@@ -576,32 +576,40 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-black text-ink mb-4">Тарифы</h2>
-            <p className="text-lg text-ink-secondary">Pay as you go. Платите за обработанные AI минуты.</p>
+            <p className="text-lg text-ink-secondary">Помесячная подписка: все функции и лимит уроков каждый месяц.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-5xl mx-auto">
             {[
               {
+                name: 'Free',
+                price: '0 ₽',
+                minutes: '1',
+                features: ['1 урок навсегда', 'Все функции сервиса', 'Ученики и прогресс', 'AI-анализ урока', 'Домашние задания'],
+                cta: 'Начать бесплатно',
+                highlighted: false,
+              },
+              {
                 name: 'Starter',
-                price: '490 ₽',
-                minutes: '500',
-                features: ['500 AI минут/мес', 'Безлимит учеников', 'Базовый AI-анализ', 'Домашние задания'],
-                cta: 'Начать',
+                price: '890 ₽',
+                minutes: '4',
+                features: ['4 урока в месяц', 'Все функции сервиса', 'Ученики и прогресс', 'AI-анализ урока', 'Домашние задания'],
+                cta: 'Оплатить',
                 highlighted: false,
               },
               {
                 name: 'Pro',
-                price: '990 ₽',
-                minutes: '1 500',
-                features: ['1 500 AI минут/мес', 'Безлимит учеников', 'AI-память учеников', 'Персональные ДЗ', 'Приоритетная поддержка'],
-                cta: 'Попробовать',
+                price: '1 490 ₽',
+                minutes: '12',
+                features: ['12 уроков в месяц', 'Все функции сервиса', 'AI-память учеников', 'Персональные ДЗ', 'Приоритетная поддержка'],
+                cta: 'Оплатить',
                 highlighted: true,
               },
               {
                 name: 'Power',
-                price: '1 990 ₽',
-                minutes: '4 000',
-                features: ['4 000 AI минут/мес', 'Безлимит учеников', 'AI-память учеников', 'Персональные ДЗ', 'Приоритетная поддержка', 'API доступ'],
-                cta: 'Выбрать',
+                price: '2 490 ₽',
+                minutes: '30',
+                features: ['30 уроков в месяц', 'Все функции сервиса', 'AI-память учеников', 'Персональные ДЗ', 'Приоритетная поддержка', 'API доступ'],
+                cta: 'Оплатить',
                 highlighted: false,
               },
             ].map((plan) => (
@@ -619,9 +627,9 @@ export default function LandingPage() {
                 <h3 className="text-xl font-black text-ink">{plan.name}</h3>
                 <div className="mt-3 mb-1">
                   <span className="text-4xl font-black text-ink">{plan.price}</span>
-                  <span className="text-sm text-ink-muted ml-1">/месяц</span>
+                  <span className="text-sm text-ink-muted ml-1">в месяц</span>
                 </div>
-                <p className="text-sm font-bold text-brand mb-6">{plan.minutes} AI мин</p>
+                <p className="text-sm font-bold text-brand mb-6">{plan.minutes} уроков</p>
                 <ul className="space-y-3 mb-8">
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-center gap-2 text-sm text-ink-secondary">
@@ -646,18 +654,18 @@ export default function LandingPage() {
 
           {/* Add-on packs
           <div className="mt-10 max-w-4xl mx-auto">
-            <p className="text-center text-sm font-bold text-ink-muted mb-4">Докупайте минуты отдельно</p>
+            <p className="text-center text-sm font-bold text-ink-muted mb-4">Один урок = один цикл «запись → завершение»</p>
             <div className="flex items-center justify-center gap-4">
               {[
-                { add: '+500', price: '290 ₽' },
-                { add: '+1 000', price: '490 ₽' },
-                { add: '+2 500', price: '990 ₽' },
+                { add: '+4 урока', price: '890 ₽' },
+                { add: '+12 уроков', price: '1 490 ₽' },
+                { add: '+30 уроков', price: '2 490 ₽' },
               ].map((pack) => (
                 <button
                   key={pack.add}
                   className="px-5 py-3 rounded-2xl border-2 border-surface-border bg-white text-sm font-bold text-ink hover:border-brand hover:text-brand shadow-[0_3px_0_0_#D0D0D8] active:shadow-none active:translate-y-[2px] transition-all"
                 >
-                  {pack.add} мин — {pack.price}
+                  {pack.add} — {pack.price}
                 </button>
               ))}
             </div>

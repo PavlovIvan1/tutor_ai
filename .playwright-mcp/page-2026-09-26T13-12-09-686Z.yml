@@ -1,0 +1,230 @@
+- generic [ref=e2]:
+  - navigation [ref=e3]:
+    - link "TutorAI" [ref=e4] [cursor=pointer]:
+      - /url: /
+    - generic [ref=e9]:
+      - link "Как работает" [ref=e10] [cursor=pointer]:
+        - /url: "#how"
+      - link "Почему мы" [ref=e11] [cursor=pointer]:
+        - /url: "#why"
+      - link "До и после" [ref=e12] [cursor=pointer]:
+        - /url: "#before-after"
+    - link "Получить бесплатный доступ" [ref=e14] [cursor=pointer]:
+      - /url: "#waitlist"
+  - generic [ref=e15]:
+    - generic [ref=e16]:
+      - generic [ref=e17]: Ищем первых преподавателей английского для тестирования сервиса на реальных уроках
+      - heading "Урок окончен — анализ, план и ДЗ готовы." [level=1] [ref=e19]: Урок окончен —анализ, план и ДЗ готовы.
+      - paragraph [ref=e20]: AI разбирает занятие, фиксирует ошибки и прогресс ученика и готовит домашнее задание с сообщением для ученика.
+      - generic [ref=e21]:
+        - link "Получить бесплатный доступ" [ref=e22] [cursor=pointer]:
+          - /url: "#waitlist"
+        - link "Как это работает" [ref=e23] [cursor=pointer]:
+          - /url: "#how"
+      - paragraph [ref=e26]: Первые репетиторы тестируют нас бесплатно
+    - generic [ref=e28]:
+      - generic [ref=e29]: tutorai.app/dashboard
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - generic [ref=e38]: TutorAI
+          - generic [ref=e43]: Dashboard
+          - generic [ref=e44]: Students
+          - generic [ref=e45]: Lessons
+          - generic [ref=e46]: Homework
+          - generic [ref=e47]: Settings
+        - generic [ref=e48]:
+          - generic [ref=e49]:
+            - paragraph [ref=e50]: Dashboard
+            - paragraph [ref=e51]: Welcome back. Here's your teaching overview.
+          - generic [ref=e52]:
+            - generic [ref=e53]:
+              - paragraph [ref=e54]: Students
+              - paragraph [ref=e55]: "4"
+              - paragraph [ref=e56]: View all
+            - generic [ref=e57]:
+              - paragraph [ref=e58]: Lessons
+              - paragraph [ref=e59]: "8"
+              - paragraph [ref=e60]: This week
+            - generic [ref=e61]:
+              - paragraph [ref=e62]: Homework
+              - paragraph [ref=e63]: 94%
+              - paragraph [ref=e64]: Completed
+            - generic [ref=e65]:
+              - paragraph [ref=e66]: Attention
+              - paragraph [ref=e67]: "1"
+              - paragraph [ref=e68]: Needs review
+          - generic [ref=e69]:
+            - generic [ref=e70]:
+              - paragraph [ref=e71]: Quick Start
+              - paragraph [ref=e72]: Begin a lesson recording
+              - generic [ref=e73]: Start Lesson
+            - generic [ref=e76]:
+              - paragraph [ref=e77]: Recent Lessons
+              - generic [ref=e78]:
+                - generic [ref=e79]:
+                  - paragraph [ref=e85]: Мария К.
+                  - paragraph [ref=e86]: 45 мин
+                - generic [ref=e87]:
+                  - paragraph [ref=e93]: Даниил П.
+                  - paragraph [ref=e94]: 60 мин
+          - generic [ref=e95]:
+            - paragraph [ref=e96]: Students Needing Attention
+            - generic [ref=e97]:
+              - generic [ref=e98]:
+                - paragraph [ref=e99]: Тимур Ш.
+                - paragraph [ref=e100]: Progress below 50%
+              - generic [ref=e101]: 45%
+  - generic [ref=e103]:
+    - generic [ref=e104]:
+      - heading "Как это работает" [level=2] [ref=e105]
+      - paragraph [ref=e106]: От урока до персонального ДЗ за 4 шага.
+    - generic [ref=e107]:
+      - generic [ref=e108]:
+        - paragraph [ref=e113]: Шаг 01
+        - heading "Начните урок" [level=3] [ref=e114]
+        - paragraph [ref=e115]: Выберите ученика и начните запись.
+      - generic [ref=e116]:
+        - paragraph [ref=e123]: Шаг 02
+        - heading "Преподавайте" [level=3] [ref=e124]
+        - paragraph [ref=e125]: Учите как обычно. Без лишней работы.
+      - generic [ref=e126]:
+        - paragraph [ref=e134]: Шаг 03
+        - heading "AI-анализ" [level=3] [ref=e135]
+        - paragraph [ref=e136]: ИИ анализирует расшифровку автоматически.
+      - generic [ref=e137]:
+        - paragraph [ref=e145]: Шаг 04
+        - heading "Отправьте ДЗ" [level=3] [ref=e146]
+        - paragraph [ref=e147]: Просмотрите и отправьте персональное задание.
+  - generic [ref=e149]:
+    - generic [ref=e150]:
+      - heading "Знайте своих учеников" [level=2] [ref=e151]
+      - paragraph [ref=e152]: AI строит долгосрочное понимание каждого ученика.
+    - generic [ref=e153]:
+      - generic [ref=e154]:
+        - heading "AI-память ученика" [level=3] [ref=e160]
+        - generic [ref=e161]:
+          - generic [ref=e162]:
+            - paragraph [ref=e163]: Сильные стороны
+            - paragraph [ref=e164]: Хорошо усваивает грамматику, активная лексика растёт
+          - generic [ref=e165]:
+            - paragraph [ref=e166]: Над чем работать
+            - paragraph [ref=e167]: Сложности с артиклями, necesita практику условных предложений
+          - generic [ref=e168]:
+            - paragraph [ref=e169]: Паттерны
+            - paragraph [ref=e170]: Путает present perfect и past simple в повседневных ситуациях
+      - generic [ref=e171]:
+        - heading "Прогресс по темам" [level=3] [ref=e172]
+        - generic [ref=e173]:
+          - generic [ref=e175]:
+            - generic [ref=e176]: Грамматика
+            - generic [ref=e177]: 78%
+          - generic [ref=e181]:
+            - generic [ref=e182]: Лексика
+            - generic [ref=e183]: 65%
+          - generic [ref=e187]:
+            - generic [ref=e188]: Аудирование
+            - generic [ref=e189]: 52%
+          - generic [ref=e193]:
+            - generic [ref=e194]: Говорение
+            - generic [ref=e195]: 41%
+          - generic [ref=e199]:
+            - generic [ref=e200]: Чтение
+            - generic [ref=e201]: 88%
+          - generic [ref=e205]:
+            - generic [ref=e206]: Письмо
+            - generic [ref=e207]: 59%
+  - generic [ref=e211]:
+    - generic [ref=e212]:
+      - heading "Домашние задания на автопилоте" [level=2] [ref=e213]
+      - paragraph [ref=e214]: Персональные упражнения на основе реальных слабостей ученика.
+    - generic [ref=e215]:
+      - generic [ref=e216]:
+        - heading "На основе урока" [level=3] [ref=e221]
+        - paragraph [ref=e222]: AI анализирует расшифровку урока и создаёт упражнения на темы, которые вызвали трудности.
+      - generic [ref=e223]:
+        - heading "Персонализация" [level=3] [ref=e230]
+        - paragraph [ref=e231]: Каждое задание учитывает уровень, слабости и прогресс конкретного ученика.
+      - generic [ref=e232]:
+        - heading "Сразу к ученику" [level=3] [ref=e236]
+        - paragraph [ref=e237]: Отправьте задание одним кликом. Ученик получает ссылку и выполняет онлайн.
+  - generic [ref=e239]:
+    - generic [ref=e240]:
+      - heading "Почему репетиторы выбирают нас" [level=2] [ref=e241]
+      - paragraph [ref=e242]: Мы знаем ваши проблемы и решаем их.
+    - generic [ref=e243]:
+      - generic [ref=e245]:
+        - generic [ref=e246]: Тратите 30+ минут после урока на подготовку ДЗ
+        - generic [ref=e250]: AI создаёт персональное ДЗ за 2 минуты
+      - generic [ref=e254]:
+        - generic [ref=e255]: Забываете детали про каждого ученика между уроками
+        - generic [ref=e259]: "AI-память хранит всё: сильные стороны, слабости, паттерны"
+      - generic [ref=e263]:
+        - generic [ref=e264]: Ученики теряют мотивацию без обратной связи
+        - generic [ref=e268]: Детальный разбор после каждого урока мотивирует учиться
+      - generic [ref=e272]:
+        - generic [ref=e273]: Сложно отслеживать прогресс каждого ученика
+        - generic [ref=e277]: Наглядные графики и отчёты по каждому ученику
+  - generic [ref=e281]:
+    - generic [ref=e282]:
+      - heading "До и после" [level=2] [ref=e283]
+      - paragraph [ref=e284]: Как меняется работа репетитора.
+    - generic [ref=e285]:
+      - generic [ref=e286]:
+        - heading "Без TutorAI" [level=3] [ref=e291]
+        - list [ref=e292]:
+          - listitem [ref=e293]: 30+ минут на подготовку ДЗ после каждого урока
+          - listitem [ref=e297]: Забываете детали про учеников
+          - listitem [ref=e301]: Нет системы для отслеживания прогресса
+          - listitem [ref=e305]: Ученики теряют мотивацию
+          - listitem [ref=e309]: Ручная работа с каждым учеником
+      - generic [ref=e313]:
+        - heading "С TutorAI" [level=3] [ref=e317]
+        - list [ref=e318]:
+          - listitem [ref=e319]: ДЗ готово через 2 минуты после урока
+          - listitem [ref=e322]: AI-память помнит всё за вас
+          - listitem [ref=e325]: Наглядные графики прогресса
+          - listitem [ref=e328]: Персонализированные задания
+          - listitem [ref=e331]: Автоматизация рутины
+  - generic [ref=e335]:
+    - generic [ref=e336]: Бесплатный доступ для первых преподавателей
+    - heading "Получите бесплатный доступ" [level=2] [ref=e338]
+    - paragraph [ref=e339]: Ищем первых преподавателей английского для тестирования сервиса на реальных уроках. Оставьте контакты — свяжемся и откроем доступ.
+    - generic [ref=e340]:
+      - generic [ref=e341]:
+        - generic [ref=e342]:
+          - generic [ref=e343]: Имя
+          - textbox "Как вас зовут" [ref=e344]
+        - generic [ref=e345]:
+          - generic [ref=e346]: Email
+          - textbox "you@example.com" [ref=e347]
+        - generic [ref=e348]:
+          - generic [ref=e349]: Telegram
+          - textbox "@username или номер телефона" [ref=e350]
+      - button "Получить бесплатный доступ" [ref=e351] [cursor=pointer]
+      - paragraph [ref=e352]: Без оплаты. Ответим в течение дня.
+  - generic [ref=e354]:
+    - heading "Проведите урок. Мы сделаем остальное." [level=2] [ref=e355]: Проведите урок.Мы сделаем остальное.
+    - paragraph [ref=e356]: Ищем первых преподавателей английского для тестирования сервиса на реальных уроках. Бесплатно, без кредитной карты.
+    - generic [ref=e357]:
+      - link "Получить бесплатный доступ" [ref=e358] [cursor=pointer]:
+        - /url: "#waitlist"
+      - link "Как это работает" [ref=e359] [cursor=pointer]:
+        - /url: "#how"
+    - generic [ref=e360]:
+      - generic [ref=e361]: Шифрование
+      - generic [ref=e365]: Без сервера
+      - generic [ref=e368]: 2 мин на ДЗ
+  - contentinfo [ref=e372]:
+    - generic [ref=e374]:
+      - generic [ref=e375]:
+        - generic [ref=e376]: © 2026 TutorAI. Все права защищены.
+        - generic [ref=e377]: Павлов Иван Андреевич · Самозанятый · ИНН
+      - generic [ref=e378]:
+        - link "Оферта" [ref=e379] [cursor=pointer]:
+          - /url: /offer
+        - link "Конфиденциальность" [ref=e380] [cursor=pointer]:
+          - /url: /privacy
+        - link "support.tutorai@gmail.com" [ref=e381] [cursor=pointer]:
+          - /url: mailto:support.tutorai@gmail.com
+        - link "+7 904 657 77 25" [ref=e382] [cursor=pointer]:
+          - /url: tel:+79046577725

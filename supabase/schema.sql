@@ -136,7 +136,7 @@ create table if not exists public.homeworks (
 create table if not exists public.homework_questions (
   id uuid primary key default uuid_generate_v4(),
   homework_id uuid not null references public.homeworks(id) on delete cascade,
-  type text not null check (type in ('multiple_choice','fill_blank','short_answer')),
+  type text not null check (type in ('multiple_choice','fill_blank','short_answer','writing')),
   question_text text not null,
   options jsonb,
   correct_answer text not null,

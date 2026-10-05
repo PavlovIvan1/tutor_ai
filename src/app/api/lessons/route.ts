@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb, isDbConfigured, q } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 const DEMO_TUTOR_ID = 'd0d6f84a-1234-5678-9abc-def012345678';
 
 export async function GET(req: NextRequest) {

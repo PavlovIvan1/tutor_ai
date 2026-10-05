@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb, isDbConfigured, q } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 const DEMO_TUTOR_ID = 'd0d6f84a-1234-5678-9abc-def012345678';
 
 export async function GET(_req: NextRequest) {
@@ -10,7 +12,13 @@ export async function GET(_req: NextRequest) {
 
   try {
     const students = await q(sql, sql`SELECT id, name, level, goals, created_at FROM students WHERE tutor_id = ${DEMO_TUTOR_ID} AND (is_archived = false OR is_archived IS NULL)`);
-    const lessons = await q(sql, sql`SELECT l.*, la.summary, la.topics, la.engagement_score, la.weaknesses, la.key_vocabulary, la.grammar_focus, h.id as homework_id FROM lessons l LEFT JOIN lesson_analyses la ON la.lesson_id = l.id LEFT JOIN homeworks h ON h.lesson_id = l.id WHERE l.tutor_id = ${DEMO_TUTOR_ID} ORDER BY l.created_at DESC`);
+
+    let lessons: Record<string, any>[] = [];
+    try {
+      lessons = await q(sql, sql`SELECT l.*, la.summary, la.topics, la.strengths, la.weaknesses, la.engagement_score, la.key_vocabulary, la.grammar_focus, h.id as homework_id FROM lessons l LEFT JOIN lesson_analyses la ON la.lesson_id = l.id LEFT JOIN homeworks h ON h.lesson_id = l.id WHERE l.tutor_id = ${DEMO_TUTOR_ID} ORDER BY l.created_at DESC`);
+    } catch (lessonsError: any) {
+      console.error('Stats lessons error:', lessonsError);
+    }
 
     const now = new Date();
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -23,6 +31,7 @@ export async function GET(_req: NextRequest) {
         ...s,
         lessonCount: lessons.filter((l: any) => l.student_id === s.id).length,
         lastLesson: lessons.find((l: any) => l.student_id === s.id) || null,
+        analyses: lessons.filter((l: any) => l.student_id === s.id).slice(0, 10),
       })),
       stats: {
         totalStudents: students.length,

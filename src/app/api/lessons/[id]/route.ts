@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb, isDbConfigured, q } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   if (!isDbConfigured()) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
 
